@@ -25,6 +25,7 @@
       <span>BlueHorizon <b>Log</b></span>
     </div>
     <div class="topbar-actions">
+      <button class="avatar-btn" id="btnProfile" title="My profile" aria-label="My profile"></button>
       <button class="icon-btn" id="btnSearch" title="Search" aria-label="Search">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
@@ -133,9 +134,19 @@
   <!-- Roster -->
   <section id="view-roster" class="view hidden">
     <h2 class="page-title">Team Roster</h2>
-    <p class="settings-note" style="margin-bottom:10px">Members pick their name from this list when they first open the app. Emails for reminders are configured separately (never stored publicly) — see the README.</p>
+    <p class="settings-note" style="margin-bottom:10px">Add a member, then send them an invite link — it sets up their device automatically (repo, access, everything). Emails for reminders are configured separately (never stored publicly) — see the README.</p>
+    <button class="ghost-btn" id="btnInviteLink" style="margin-bottom:10px">🔗 Copy invite link</button>
     <div id="rosterList" class="project-list"></div>
     <button class="ghost-btn" id="btnAddMember">+ Add member</button>
+  </section>
+
+  <!-- Resources -->
+  <section id="view-resources" class="view hidden">
+    <h2 class="page-title">Resources</h2>
+    <p class="settings-note" style="margin-bottom:10px">Team links and downloads — Onshape, software, guides. Tap + to add a link or upload a file.</p>
+    <div id="resourceList"></div>
+    <button class="ghost-btn" id="btnAddResource">+ Add resource</button>
+    <input id="resourceFileInput" type="file" hidden>
   </section>
 
 </main>
@@ -153,9 +164,9 @@
   <button class="fab" id="btnNew" aria-label="New entry">
     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
-  <button class="tab" data-view="photos">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    <span>Photos</span>
+  <button class="tab" data-view="pos">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+    <span>POs</span>
   </button>
   <button class="tab" id="tabMore">
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -172,10 +183,12 @@
       <span style="width:52px"></span>
     </div>
     <div class="sheet-body more-menu">
+      <button class="more-item" data-goto="photos">📷 Photo Gallery</button>
       <button class="more-item" data-goto="projects">📁 Projects</button>
       <button class="more-item" data-goto="meetings">📋 Meeting Notes</button>
-      <button class="more-item" data-goto="pos">📦 Purchase Orders</button>
+      <button class="more-item" data-goto="resources">🔗 Resources</button>
       <button class="more-item" data-goto="roster">👥 Team Roster</button>
+      <button class="more-item" id="moreOnboard">🚀 New member onboarding</button>
       <button class="more-item" id="moreJournal">📓 Write weekly journal</button>
     </div>
   </div>
@@ -203,6 +216,9 @@
       <textarea id="composeBody" class="input textarea" rows="5"
                 placeholder="What did you do? What worked, what didn’t, what’s next?&#10;&#10;Two sentences beats zero."></textarea>
 
+      <input id="composeVideo" class="input hidden" type="url"
+             placeholder="Video link (YouTube unlisted recommended — free auto-captions)">
+
       <div class="photo-row" id="composePhotos">
         <label class="photo-add" for="photoInput">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -213,7 +229,7 @@
           <span>Files</span>
         </label>
         <input id="photoInput" type="file" accept="image/*" multiple hidden>
-        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.pdf,.docx,.pptx,.txt,.md,.zip,.step,.stl,.dxf" multiple hidden>
+        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.pdf,.docx,.pptx,.txt,.md,.vtt,.zip,.step,.stl,.dxf,.mp4,.mov,.webm" multiple hidden>
       </div>
       <div id="composeFiles" class="file-list"></div>
 
@@ -287,6 +303,37 @@
       <div id="whoList" class="more-menu"></div>
       <button class="ghost-btn" id="whoSkip">I’m not on the list</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== Profile sheet ===== -->
+<div id="profileSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <button class="text-btn" id="profileClose">Close</button>
+      <span class="sheet-title">My Profile</span>
+      <span style="width:52px"></span>
+    </div>
+    <div class="sheet-body" style="align-items:center">
+      <label for="avatarInput" class="avatar-big" id="profileAvatar" title="Tap to change photo"></label>
+      <input id="avatarInput" type="file" accept="image/*" hidden>
+      <div id="profileName" style="font-size:19px;font-weight:700"></div>
+      <div id="profileStats" class="settings-note" style="text-align:center"></div>
+      <button class="ghost-btn" id="profileSwitch">Switch person</button>
+      <div id="profileEntries" class="feed-list" style="width:100%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Onboarding wizard ===== -->
+<div id="onboardSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <button class="text-btn" id="onboardSkip">Skip</button>
+      <span class="sheet-title" id="onboardStep">Welcome</span>
+      <button class="text-btn primary" id="onboardNext">Next</button>
+    </div>
+    <div class="sheet-body" id="onboardBody"></div>
   </div>
 </div>
 

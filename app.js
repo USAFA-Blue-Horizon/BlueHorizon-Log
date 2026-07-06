@@ -42,6 +42,10 @@ const state = {
   roster: [],
   team: { goals: [], tasks: [] },
   pos: [],
+  resources: [],
+  obStep: 0,
+  invited: false,
+  pendingResource: null,
   filter: 'all',
   photoFilter: 'all',
   composePhotos: [],   // [{blob, dataUrl}]  (new photos this session)
@@ -192,18 +196,20 @@ async function loadAll(showSpinner = true) {
   const btn = $('btnSync');
   if (showSpinner) btn.classList.add('spin');
   try {
-    const [projects, entries, roster, team, pos] = await Promise.all([
+    const [projects, entries, roster, team, pos, resources] = await Promise.all([
       api.readJson('data/projects.json', DEFAULT_PROJECTS),
       api.readJson('data/index.json', []),
       api.readJson('data/roster.json', []),
       api.readJson('data/team.json', { goals: [], tasks: [] }),
       api.readJson('data/pos.json', []),
+      api.readJson('data/resources.json', []),
     ]);
     state.projects = projects;
     state.entries = entries;
     state.roster = roster;
     state.team = { goals: team.goals || [], tasks: team.tasks || [] };
     state.pos = pos;
+    state.resources = resources;
     render();
     maybeAskWho();
   } catch (e) {
@@ -214,6 +220,11 @@ async function loadAll(showSpinner = true) {
 }
 
 function maybeAskWho() {
+  // brand-new members (or invite-link arrivals) get the full onboarding wizard
+  if (state.roster.length && !cfg.rid && !localStorage.getItem('bh_onboarded') && !localStorage.getItem('bh_who_skipped')) {
+    openOnboarding();
+    return;
+  }
   if (state.roster.length && !cfg.rid && !localStorage.getItem('bh_who_skipped')) {
     const list = $('whoList');
     list.innerHTML = '';
@@ -236,7 +247,9 @@ function maybeAskWho() {
 /* ---------- rendering ---------- */
 
 function render() {
+  renderTopbarAvatar();
   renderHome();
+  renderResources();
   renderFilters($('feedFilters'), state.filter, (id) => { state.filter = id; render(); });
   renderFilters($('photoFilters'), state.photoFilter, (id) => { state.photoFilter = id; render(); });
   renderFeed();
@@ -369,10 +382,11 @@ function entryCard(e, clamp = true) {
 
   const nFiles = (e.files || []).length;
   card.innerHTML = `
-    <div class="card-meta">${badge}<span>${esc(e.author || 'Unknown')}</span><span>·</span><span>${when}</span>${nFiles ? `<span>· 📎 ${nFiles}</span>` : ''}</div>
+    <div class="card-meta">${badge}<span>${esc(e.author || 'Unknown')}</span><span>·</span><span>${when}</span>${nFiles ? `<span>· 📎 ${nFiles}</span>` : ''}${e.video ? '<span>· 🎥</span>' : ''}</div>
     ${e.title ? `<div class="card-title">${esc(e.title)}</div>` : ''}
     ${e.body ? `<div class="card-body${clamp ? ' clamp' : ''}">${esc(e.body)}</div>` : ''}
   `;
+  card.querySelector('.card-meta').prepend(avatarNode(e.authorRid || e.author));
 
   if (e.photos && e.photos.length) {
     const row = document.createElement('div');
@@ -457,8 +471,9 @@ function renderRoster() {
     const n = state.team.tasks.filter((t) => t.status !== 'done' && (t.assignees || []).includes(m.id)).length;
     const div = document.createElement('div');
     div.className = 'project-card';
-    div.innerHTML = `<span class="project-name">${esc(m.name)}${m.id === cfg.rid ? ' <span class="badge">you</span>' : ''}</span>
+    div.innerHTML = `<span class="project-name" style="display:flex;align-items:center;gap:9px">${esc(m.name)}${m.id === cfg.rid ? ' <span class="badge">you</span>' : ''}</span>
       <span class="project-count">${n} open task${n === 1 ? '' : 's'}</span>`;
+    div.querySelector('.project-name').prepend(avatarNode(m.id));
     div.onclick = () => {
       const action = confirm(`Remove ${m.name} from the roster?\n(OK = remove, Cancel = keep)`);
       if (action) removeMember(m.id);
@@ -712,6 +727,278 @@ function savePos(message) {
   return api.updateJson('data/pos.json', () => state.pos, message);
 }
 
+/* ----- avatars & profile ----- */
+
+function initials(name) {
+  return String(name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+/* Returns an <img> (if the member has an avatar) or a <span> with initials. */
+function avatarNode(ridOrName, cls = 'avatar-sm') {
+  const m = state.roster.find((x) => x.id === ridOrName) ||
+            state.roster.find((x) => x.name === ridOrName);
+  if (m && m.avatar) {
+    const img = document.createElement('img');
+    img.className = cls;
+    img.alt = m.name;
+    img.dataset.path = m.avatar;
+    img.src = photoUrl(m.avatar);
+    return img;
+  }
+  const el = document.createElement('span');
+  el.className = cls;
+  el.textContent = initials(m ? m.name : ridOrName);
+  return el;
+}
+
+function renderTopbarAvatar() {
+  const btn = $('btnProfile');
+  btn.innerHTML = '';
+  btn.appendChild(avatarNode(cfg.rid || cfg.name, 'avatar-sm'));
+}
+
+function openProfile() {
+  if (!cfg.rid && !cfg.name) { openWhoPicker(); return; }
+  const wrap = $('profileAvatar');
+  wrap.innerHTML = '';
+  const av = avatarNode(cfg.rid || cfg.name, 'avatar-big');
+  av.style.pointerEvents = 'none';
+  wrap.appendChild(av);
+  $('profileName').textContent = cfg.name || memberName(cfg.rid);
+  const mine = state.entries.filter((e) => (e.authorRid && e.authorRid === cfg.rid) || e.author === cfg.name);
+  const openTasks = state.team.tasks.filter((t) => t.status !== 'done' && (t.assignees || []).includes(cfg.rid));
+  const photos = mine.reduce((n, e) => n + (e.photos || []).length, 0);
+  $('profileStats').textContent = `${mine.length} entries · ${photos} photos · ${openTasks.length} open tasks. Tap the picture to change it.`;
+  const list = $('profileEntries');
+  list.innerHTML = '';
+  mine.slice(0, 5).forEach((e) => list.appendChild(entryCard(e)));
+  $('profileSheet').classList.remove('hidden');
+}
+
+function openWhoPicker() {
+  const list = $('whoList');
+  list.innerHTML = '';
+  state.roster.forEach((m) => {
+    const b = document.createElement('button');
+    b.className = 'more-item';
+    b.textContent = m.name;
+    b.onclick = () => {
+      cfg.set('rid', m.id);
+      cfg.set('name', m.name);
+      $('whoSheet').classList.add('hidden');
+      render();
+    };
+    list.appendChild(b);
+  });
+  $('whoSheet').classList.remove('hidden');
+}
+
+async function uploadAvatar(file) {
+  if (!requireToken()) return;
+  if (!cfg.rid) { toast('Pick your name from the roster first', true); return; }
+  try {
+    toast('Uploading photo…');
+    const { blob } = await compressImage(file, 512);
+    const path = `data/avatars/${cfg.rid}.jpg`;
+    const sha = await api.sha(path);
+    await api.write(path, blob, `avatar: ${cfg.name}`, sha);
+    await api.updateJson('data/roster.json',
+      (cur) => (Array.isArray(cur) ? cur : []).map((m) => (m.id === cfg.rid ? { ...m, avatar: path } : m)),
+      `avatar: ${cfg.name}`);
+    state.blobCache.delete(path);
+    await loadAll(false);
+    openProfile();
+    toast('Profile photo updated ✓');
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ----- invite links ----- */
+
+function parseInviteLink() {
+  const m = location.hash.match(/#invite=([A-Za-z0-9+/=_-]+)/);
+  if (!m) return;
+  try {
+    const inv = JSON.parse(atob(decodeURIComponent(m[1])));
+    if (inv.r) cfg.set('repo', inv.r);
+    if (inv.b) cfg.set('branch', inv.b);
+    if (inv.t) cfg.set('token', inv.t);
+    localStorage.removeItem('bh_who_skipped');
+    state.invited = true;
+    history.replaceState(null, '', location.pathname + location.search);
+  } catch { /* malformed invite — ignore */ }
+}
+
+function copyInviteLink() {
+  if (!cfg.repo || !cfg.token) { toast('Set up repo + token in Settings first', true); return; }
+  const inv = btoa(JSON.stringify({ r: cfg.repo, b: cfg.branch, t: cfg.token }));
+  const url = `${location.origin}${location.pathname}#invite=${inv}`;
+  const done = () => toast('Invite link copied — send it to the new member ✓');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done).catch(() => prompt('Copy this invite link:', url));
+  } else {
+    prompt('Copy this invite link:', url);
+  }
+}
+
+/* ----- resources ----- */
+
+function renderResources() {
+  const wrap = $('resourceList');
+  wrap.innerHTML = '';
+  if (!state.resources.length) {
+    wrap.innerHTML = '<div class="empty"><p class="empty-title">No resources yet</p><p>Add your Onshape workspace, software downloads, guides…</p></div>';
+    return;
+  }
+  const cats = [...new Set(state.resources.map((r) => r.category || 'General'))];
+  cats.forEach((cat) => {
+    const g = document.createElement('div');
+    g.className = 'res-group';
+    g.innerHTML = `<h3>${esc(cat)}</h3>`;
+    state.resources.filter((r) => (r.category || 'General') === cat).forEach((r) => {
+      const item = document.createElement('div');
+      item.className = 'res-item';
+      item.innerHTML = `<span>${r.url ? '🔗' : fileIcon(r.title)}</span>
+        <span class="r-title">${esc(r.title)}</span>
+        <span class="r-kind">${r.url ? 'link' : 'download'}</span>
+        <button class="text-btn danger" aria-label="Remove">&times;</button>`;
+      item.onclick = () => {
+        if (r.url) window.open(r.url, '_blank', 'noopener');
+        else if (r.filePath) downloadFile(r.filePath, r.title);
+      };
+      item.querySelector('button').onclick = (ev) => {
+        ev.stopPropagation();
+        if (confirm(`Remove “${r.title}” from resources?`)) removeResource(r.id);
+      };
+      g.appendChild(item);
+    });
+    wrap.appendChild(g);
+  });
+}
+
+async function addResource() {
+  if (!requireToken()) return;
+  const title = prompt('Resource title (e.g. "Onshape — Team CAD"):');
+  if (!title || !title.trim()) return;
+  const url = prompt('Paste the link.\n(Leave empty to upload a file instead.)');
+  if (url === null) return;
+  const category = prompt('Category:', 'General') || 'General';
+  if (url && url.trim()) {
+    await saveResource({ id: uid(), title: title.trim(), url: url.trim(), category: category.trim() });
+  } else {
+    state.pendingResource = { title: title.trim(), category: category.trim() };
+    $('resourceFileInput').click();
+  }
+}
+
+async function saveResource(res) {
+  try {
+    await api.updateJson('data/resources.json',
+      (cur) => [...(Array.isArray(cur) ? cur : []), res], `resource: ${res.title}`);
+    state.resources.push(res);
+    renderResources();
+    toast('Resource added ✓');
+  } catch (e) { toast(e.message, true); }
+}
+
+async function removeResource(id) {
+  if (!requireToken()) return;
+  try {
+    await api.updateJson('data/resources.json',
+      (cur) => (Array.isArray(cur) ? cur : []).filter((r) => r.id !== id), 'resource: remove');
+    state.resources = state.resources.filter((r) => r.id !== id);
+    renderResources();
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ----- onboarding wizard ----- */
+
+const OB_STEPS = 5;
+
+function openOnboarding() {
+  state.obStep = 0;
+  renderOnboarding();
+  $('onboardSheet').classList.remove('hidden');
+}
+
+function obDots() {
+  return `<div class="ob-dots">${Array.from({ length: OB_STEPS }, (_, i) =>
+    `<span class="${i === state.obStep ? 'on' : ''}"></span>`).join('')}</div>`;
+}
+
+function renderOnboarding() {
+  const body = $('onboardBody');
+  const step = state.obStep;
+  $('onboardNext').textContent = step === OB_STEPS - 1 ? 'Done' : 'Next';
+  const titles = ['Welcome', 'Who are you?', 'The projects', 'Resources', 'How we document'];
+  $('onboardStep').textContent = titles[step];
+
+  if (step === 0) {
+    body.innerHTML = `<div class="ob-hero"><div class="ob-emoji">🚀</div>
+      <h2>Welcome to BlueHorizon</h2>
+      <p>This is where the team documents everything — work logs, photos, meetings, purchase orders. It takes 60 seconds to learn and it’s how knowledge survives graduation.</p></div>${obDots()}`;
+  } else if (step === 1) {
+    body.innerHTML = `<p class="settings-note">Pick your name so entries and tasks link to you. Not listed? Ask your team lead to add you to the roster.</p>
+      <div class="assignee-grid" id="obWho"></div>${obDots()}`;
+    const grid = body.querySelector('#obWho');
+    state.roster.forEach((m) => {
+      const chip = document.createElement('button');
+      chip.className = 'assignee-chip' + (cfg.rid === m.id ? ' on' : '');
+      chip.textContent = m.name;
+      chip.onclick = () => {
+        cfg.set('rid', m.id);
+        cfg.set('name', m.name);
+        grid.querySelectorAll('.assignee-chip').forEach((c) => c.classList.remove('on'));
+        chip.classList.add('on');
+        renderTopbarAvatar();
+      };
+      grid.appendChild(chip);
+    });
+  } else if (step === 2) {
+    body.innerHTML = `<p class="settings-note">The team is split into subteams. Browse any of them later under More → Projects.</p>${obDots()}`;
+    state.projects.forEach((p) => {
+      const latest = state.entries.find((e) => e.project === p.id);
+      const card = document.createElement('div');
+      card.className = 'ob-card';
+      card.innerHTML = `<div class="ob-t">${esc(p.name)}</div>
+        <div class="ob-s">${latest ? `Latest: ${esc(latest.title || latest.body?.slice(0, 60) || 'entry')} (${new Date(latest.date).toLocaleDateString()})` : 'No entries yet — be the first!'}</div>`;
+      body.insertBefore(card, body.lastElementChild);
+    });
+  } else if (step === 3) {
+    body.innerHTML = `<p class="settings-note">Everything you need — CAD, software, guides. Always available under More → Resources.</p>${obDots()}`;
+    if (!state.resources.length) {
+      const d = document.createElement('div');
+      d.className = 'ob-card';
+      d.innerHTML = '<div class="ob-s">No resources posted yet — check back soon.</div>';
+      body.insertBefore(d, body.lastElementChild);
+    }
+    state.resources.slice(0, 8).forEach((r) => {
+      const card = document.createElement('div');
+      card.className = 'ob-card';
+      card.style.cursor = 'pointer';
+      card.innerHTML = `<div class="ob-t">${r.url ? '🔗' : '📥'} ${esc(r.title)}</div><div class="ob-s">${esc(r.category || '')}</div>`;
+      card.onclick = () => { if (r.url) window.open(r.url, '_blank', 'noopener'); else if (r.filePath) downloadFile(r.filePath, r.title); };
+      body.insertBefore(card, body.lastElementChild);
+    });
+  } else {
+    body.innerHTML = `<div class="ob-hero"><div class="ob-emoji">📸</div>
+      <h2>Document as you go</h2>
+      <p>After every work session: tap <b>+</b>, snap a photo, write two sentences. That’s it.<br><br>
+      Weekly journals (More → Write weekly journal) keep the story going, and whoever comes after you will thank you.</p></div>${obDots()}`;
+  }
+}
+
+function onboardNext() {
+  if (state.obStep < OB_STEPS - 1) {
+    state.obStep++;
+    renderOnboarding();
+  } else {
+    localStorage.setItem('bh_onboarded', '1');
+    $('onboardSheet').classList.add('hidden');
+    render();
+    if (cfg.rid) toast(`Welcome aboard, ${cfg.name.split(' ')[0]}! 🚀`);
+  }
+}
+
 /* ----- entry detail / edit / delete ----- */
 
 function fileIcon(name) {
@@ -733,6 +1020,23 @@ function openEntry(e) {
     <div class="detail-meta">${esc(e.author || 'Unknown')} · ${when}${e.type === 'journal' ? ' · Weekly journal' : ''}${e.edited ? ' · edited' : ''}</div>
     ${e.body ? `<div class="detail-body">${esc(e.body)}</div>` : ''}
   `;
+  if (e.video) {
+    const yt = e.video.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/);
+    if (yt) {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'video-embed';
+      iframe.src = `https://www.youtube-nocookie.com/embed/${yt[1]}`;
+      iframe.allowFullscreen = true;
+      iframe.allow = 'accelerometer; encrypted-media; picture-in-picture';
+      el.appendChild(iframe);
+    } else {
+      const a = document.createElement('div');
+      a.className = 'file-chip';
+      a.innerHTML = `<span>🎥</span><span class="f-name">Watch meeting recording</span>`;
+      a.onclick = () => window.open(e.video, '_blank', 'noopener');
+      el.appendChild(a);
+    }
+  }
   if (e.files && e.files.length) {
     const fl = document.createElement('div');
     fl.className = 'file-list';
@@ -761,6 +1065,25 @@ function openEntry(e) {
 }
 
 async function openAttachment(f) {
+  if (/\.(mp4|mov|webm)$/i.test(f.name)) {
+    // inline video player
+    try {
+      toast('Loading video…');
+      const blob = cfg.token ? await api.readBlob(f.path) : await fetch(rawUrl(f.path)).then((r) => r.blob());
+      const v = document.createElement('video');
+      v.className = 'video-embed';
+      v.controls = true;
+      v.src = URL.createObjectURL(blob);
+      $('sheetViewerTitle').textContent = f.name;
+      $('sheetViewerBody').innerHTML = '';
+      $('sheetViewerBody').appendChild(v);
+      const dl = $('sheetViewerDownload');
+      dl.href = v.src;
+      dl.download = f.name;
+      $('sheetViewer').classList.remove('hidden');
+    } catch (e) { toast(e.message, true); }
+    return;
+  }
   if (/\.(xlsx|xls|csv)$/i.test(f.name)) {
     // inline spreadsheet viewer
     try {
@@ -811,6 +1134,7 @@ function startEditEntry() {
   openCompose(true);
   $('composeTitle').value = e.title || '';
   $('composeBody').value = e.body || '';
+  $('composeVideo').value = e.video || '';
   $('composeProject').value = e.project;
   renderComposePhotos();
   renderComposeFiles();
@@ -872,15 +1196,17 @@ function setComposeType(type) {
     .forEach((b) => b.classList.toggle('active', b.dataset.type === type));
   $('composeBody').placeholder =
     type === 'journal' ? 'What did you work on this week? Wins, blockers, what the next person should know…'
-    : type === 'meeting' ? 'Attendees, decisions made, action items…'
+    : type === 'meeting' ? 'Attendees, decisions made, action items…\n\nTip: paste a transcript here, or attach a .txt/.vtt file. Record with your phone’s voice memo transcription or upload the video to YouTube (unlisted) for free auto-captions.'
     : 'What did you do? What worked, what didn’t, what’s next?\n\nTwo sentences beats zero.';
   $('composeTitle').placeholder =
     type === 'meeting' ? `Meeting ${today()}` : 'Title (optional — e.g. ‘Igniter test #3’)';
+  $('composeVideo').classList.toggle('hidden', type !== 'meeting');
 }
 
 function resetCompose() {
   $('composeTitle').value = '';
   $('composeBody').value = '';
+  $('composeVideo').value = '';
   $('photoInput').value = '';
   $('fileInput').value = '';
   state.composePhotos = [];
@@ -935,7 +1261,7 @@ function renderComposeFiles() {
   });
 }
 
-async function compressImage(file) {
+async function compressImage(file, MAX = 1600) {
   const dataUrl = await new Promise((res, rej) => {
     const fr = new FileReader();
     fr.onload = () => res(fr.result);
@@ -948,7 +1274,6 @@ async function compressImage(file) {
     i.onerror = rej;
     i.src = dataUrl;
   });
-  const MAX = 1600;
   const scale = Math.min(1, MAX / Math.max(img.width, img.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(img.width * scale);
@@ -983,10 +1308,13 @@ async function post() {
     title: title || (state.composeType === 'meeting' ? `Meeting ${now.toISOString().slice(0, 10)}` : ''),
     body,
     author: existing ? existing.author : (cfg.name || 'Unknown'),
+    authorRid: existing ? (existing.authorRid || cfg.rid) : cfg.rid,
     date: existing ? existing.date : now.toISOString(),
     photos: [...state.keepPhotos],
     files: [...state.keepFiles],
   };
+  const videoUrl = $('composeVideo').value.trim();
+  if (state.composeType === 'meeting' && videoUrl) entry.video = videoUrl;
   if (isEdit) { entry.edited = now.toISOString(); entry.editedBy = cfg.name || 'Unknown'; }
 
   try {
@@ -1100,6 +1428,18 @@ function runSearch(q) {
     });
   }
 
+  const res = state.resources.filter((r) => hit(r.title) || hit(r.category));
+  if (res.length) {
+    group(`Resources (${res.length})`);
+    res.slice(0, 8).forEach((r) => {
+      total++;
+      item(mark(r.title), esc(r.category || ''), () => {
+        if (r.url) window.open(r.url, '_blank', 'noopener');
+        else switchView('resources');
+      });
+    });
+  }
+
   const projs = state.projects.filter((p) => hit(p.name));
   if (projs.length) {
     group('Projects');
@@ -1171,15 +1511,15 @@ async function testConnection() {
 
 /* ----- navigation & helpers ----- */
 
-const VIEWS = ['home', 'feed', 'photos', 'projects', 'project', 'meetings', 'pos', 'po', 'roster'];
+const VIEWS = ['home', 'feed', 'photos', 'projects', 'project', 'meetings', 'pos', 'po', 'roster', 'resources'];
 
 function switchView(v) {
   state.view = v;
   VIEWS.forEach((name) => $('view-' + name).classList.toggle('hidden', name !== v));
   document.querySelectorAll('.tabbar .tab[data-view]').forEach((t) => {
-    t.classList.toggle('active', t.dataset.view === v);
+    t.classList.toggle('active', t.dataset.view === v || (t.dataset.view === 'pos' && v === 'po'));
   });
-  $('tabMore').classList.toggle('active', ['projects', 'project', 'meetings', 'pos', 'po', 'roster'].includes(v));
+  $('tabMore').classList.toggle('active', ['photos', 'projects', 'project', 'meetings', 'roster', 'resources'].includes(v));
   window.scrollTo(0, 0);
 }
 
@@ -1223,6 +1563,28 @@ function wire() {
     b.onclick = () => { $('moreSheet').classList.add('hidden'); switchView(b.dataset.goto); };
   });
   $('moreJournal').onclick = () => { $('moreSheet').classList.add('hidden'); state.composeType = 'journal'; openCompose(); };
+  $('moreOnboard').onclick = () => { $('moreSheet').classList.add('hidden'); openOnboarding(); };
+  $('btnProfile').onclick = openProfile;
+  $('profileClose').onclick = () => $('profileSheet').classList.add('hidden');
+  $('profileSwitch').onclick = () => { $('profileSheet').classList.add('hidden'); openWhoPicker(); };
+  $('avatarInput').onchange = (ev) => { if (ev.target.files[0]) uploadAvatar(ev.target.files[0]); ev.target.value = ''; };
+  $('btnInviteLink').onclick = copyInviteLink;
+  $('btnAddResource').onclick = addResource;
+  $('resourceFileInput').onchange = async (ev) => {
+    const f = ev.target.files[0];
+    ev.target.value = '';
+    if (!f || !state.pendingResource) return;
+    if (f.size > 40 * 1048576) { toast('File over 40 MB — host it externally and add as a link', true); return; }
+    try {
+      toast('Uploading…');
+      const path = `data/resources/${sanitizeName(f.name)}`;
+      await api.write(path, f, `resource: ${state.pendingResource.title}`, await api.sha(path));
+      await saveResource({ id: uid(), title: state.pendingResource.title, filePath: path, size: f.size, category: state.pendingResource.category });
+    } catch (e) { toast(e.message, true); }
+    state.pendingResource = null;
+  };
+  $('onboardNext').onclick = onboardNext;
+  $('onboardSkip').onclick = () => { localStorage.setItem('bh_onboarded', '1'); $('onboardSheet').classList.add('hidden'); };
   $('brandHome').onclick = () => switchView('home');
   $('btnNew').onclick = () => { state.composeType = 'log'; openCompose(); };
   $('btnNewMeeting').onclick = () => { state.composeType = 'meeting'; openCompose(); };
@@ -1254,7 +1616,12 @@ function wire() {
   };
   $('fileInput').onchange = (ev) => {
     for (const f of [...ev.target.files]) {
-      if (f.size > 8 * 1048576) { toast(`${f.name} is over 8 MB — too big for the repo`, true); continue; }
+      const isVideo = /\.(mp4|mov|webm)$/i.test(f.name);
+      const cap = isVideo ? 40 : 8;
+      if (f.size > cap * 1048576) {
+        toast(`${f.name} is over ${cap} MB — ${isVideo ? 'upload it to YouTube (unlisted) and paste the link instead' : 'too big for the repo'}`, true);
+        continue;
+      }
       state.composeFiles.push({ file: f, name: f.name, size: f.size });
     }
     renderComposeFiles();
@@ -1296,7 +1663,7 @@ function wire() {
   $('sheetViewerClose').onclick = () => $('sheetViewer').classList.add('hidden');
   $('whoSkip').onclick = () => { localStorage.setItem('bh_who_skipped', '1'); $('whoSheet').classList.add('hidden'); };
 
-  ['compose', 'entrySheet', 'settings', 'moreSheet', 'taskSheet', 'searchOverlay', 'sheetViewer'].forEach((id) => {
+  ['compose', 'entrySheet', 'settings', 'moreSheet', 'taskSheet', 'searchOverlay', 'sheetViewer', 'profileSheet'].forEach((id) => {
     $(id).addEventListener('click', (e) => { if (e.target === $(id)) $(id).classList.add('hidden'); });
   });
 }
@@ -1304,10 +1671,12 @@ function wire() {
 /* ----- boot ----- */
 
 window.addEventListener('load', () => {
+  parseInviteLink();
   wire();
   state.projects = DEFAULT_PROJECTS;
   render();
   loadAll();
+  if (state.invited) toast('Welcome! Setting things up…');
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
