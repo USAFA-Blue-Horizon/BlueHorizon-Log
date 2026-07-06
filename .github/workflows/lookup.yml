@@ -1,0 +1,38 @@
+name: Lookup relay
+
+# Relays lookups the browser can't make directly (CORS / network filtering):
+# the app commits a request file, this workflow fetches the answer server-side
+# and commits a response file the app is polling for.
+
+on:
+  push:
+    paths:
+      - "data/lookups/requests/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lookup-relay
+  cancel-in-progress: false
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python scripts/lookup.py
+      - name: Commit responses
+        run: |
+          git config user.name "bh-lookup-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A data/lookups
+          git commit -m "lookup: responses" || echo "nothing to commit"
+          git pull --rebase origin main || true
+          git push
