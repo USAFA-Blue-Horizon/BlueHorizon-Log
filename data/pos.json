@@ -5,8 +5,28 @@
     "name": "Order 2026-07-08",
     "created": "2026-07-08T00:01:11.397Z",
     "by": "Jeremy",
-    "items": [],
-    "vendors": {}
+    "items": [
+      {
+        "id": "mrbbek90q3t5",
+        "addedBy": "Jeremy",
+        "addedRid": "jeremy",
+        "added": "2026-07-08T00:03:36.324Z",
+        "name": "Push-to-Connect Tube Fitting for Air Straight Adapter, for 10 mm Tube OD x 1/4 NPT Male",
+        "vendor": "McMaster",
+        "url": "https://www.mcmaster.com/5225K717/",
+        "unitCost": 12.02,
+        "qty": 2,
+        "qtyDesc": "Each",
+        "team": "engine",
+        "justification": "Fittings for gas tanks",
+        "delivery": "Delivery"
+      }
+    ],
+    "vendors": {
+      "McMaster": {
+        "shipping": 0
+      }
+    }
   },
   {
     "id": "mr9c82ukl0ev",
