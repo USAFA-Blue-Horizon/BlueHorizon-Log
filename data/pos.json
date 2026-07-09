@@ -62,6 +62,20 @@
         "team": "gse",
         "justification": "Antenna Mounting",
         "delivery": "Delivery"
+      },
+      {
+        "id": "mre1czv0wpu6",
+        "addedBy": "Aidan Pardoe",
+        "addedRid": "aidan-pardoe",
+        "added": "2026-07-09T21:45:45.612Z",
+        "name": "Glue-on-a-Roll - 3M 468mp, 1\" Wide, 60 Yards Long",
+        "vendor": "McMaster",
+        "url": "https://www.mcmaster.com/7628A33/",
+        "unitCost": 41.85,
+        "qty": 1,
+        "team": "gse",
+        "justification": "Mounting Parts to Box",
+        "delivery": "Delivery"
       }
     ],
     "vendors": {
