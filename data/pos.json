@@ -76,6 +76,21 @@
         "team": "gse",
         "justification": "Mounting Parts to Box",
         "delivery": "Delivery"
+      },
+      {
+        "id": "mre1nhr8l2hs",
+        "addedBy": "Aidan Pardoe",
+        "addedRid": "aidan-pardoe",
+        "added": "2026-07-09T21:53:55.364Z",
+        "name": "18-8 Stainless Steel Socket Head Screw - M2.5 x 0.45 mm Thread Size, 10 mm Long, Fully Threaded",
+        "vendor": "McMaster",
+        "url": "https://www.mcmaster.com/91292A014/",
+        "unitCost": 7.75,
+        "qty": 1,
+        "qtyDesc": "100",
+        "team": "gse",
+        "justification": "Display Mount",
+        "delivery": "Delivery"
       }
     ],
     "vendors": {
