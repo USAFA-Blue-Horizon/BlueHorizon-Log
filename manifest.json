@@ -2,7 +2,7 @@
   "name": "BlueHorizon Log",
   "short_name": "BH Log",
   "description": "Quick documentation for BlueHorizon Rocketry — photos, work logs, weekly journals.",
-  "start_url": "./index.html",
+  "start_url": "./portal.html",
   "display": "standalone",
   "background_color": "#0b1220",
   "theme_color": "#0b1220",

@@ -2,441 +2,295 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
-<title>BlueHorizon Log</title>
-<link rel="manifest" href="manifest.json">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#05070f">
+<meta name="description" content="BlueHorizon — USAFA's collegiate rocketry club. Liquid engines, flight computers, and the cadets who build them.">
+<title>BLUE HORIZON — USAFA Collegiate Rocketry</title>
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #2447e8;
+  --blue-glow: rgba(36, 71, 232, 0.5);
+  --bg: #05070f;
+  --text: #eef1f8;
+  --dim: #9aa6c4;
+  --line: rgba(140, 165, 255, 0.14);
+  --glass: rgba(10, 16, 34, 0.55);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font: 300 16px/1.65 'Exo 2', sans-serif; }
+a { color: inherit; text-decoration: none; }
+
+/* ---- nav ---- */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; align-items: center; gap: 34px;
+  padding: 22px 42px;
+  background: linear-gradient(rgba(5,7,15,0.72), transparent);
+  transition: background 0.3s, padding 0.3s;
+}
+nav.scrolled { background: rgba(5, 7, 15, 0.9); backdrop-filter: blur(14px); padding: 14px 42px; border-bottom: 1px solid var(--line); }
+.logo { width: 34px; height: 34px; flex: 0 0 auto; }
+nav a.nlink {
+  font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 500;
+  letter-spacing: 0.28em; color: var(--text); opacity: 0.85; position: relative;
+}
+nav a.nlink:hover { opacity: 1; }
+nav a.nlink::after {
+  content: ''; position: absolute; left: 0; bottom: -6px; height: 1.5px; width: 0;
+  background: var(--blue); transition: width 0.25s;
+}
+nav a.nlink:hover::after { width: 100%; }
+.login-btn {
+  margin-left: auto;
+  font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 0.2em;
+  padding: 10px 26px; border: 1.5px solid var(--blue); border-radius: 3px;
+  color: #fff; background: rgba(36, 71, 232, 0.15); cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.login-btn:hover { background: var(--blue); box-shadow: 0 0 24px var(--blue-glow); }
+.menu-btn { display: none; margin-left: auto; background: none; border: 0; color: #fff; font-size: 26px; cursor: pointer; }
+@media (max-width: 860px) {
+  nav { gap: 0; padding: 16px 20px; }
+  nav a.nlink { display: none; }
+  .menu-btn { display: block; }
+  .login-btn { margin-left: 14px; }
+}
+.mobile-menu {
+  position: fixed; inset: 0; z-index: 60; background: rgba(5,7,15,0.97);
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 30px;
+}
+.mobile-menu.open { display: flex; }
+.mobile-menu a { font-family: 'Orbitron', sans-serif; letter-spacing: 0.3em; font-size: 15px; }
+.mobile-menu .close { position: absolute; top: 22px; right: 26px; font-size: 32px; background: none; border: 0; color: #fff; cursor: pointer; }
+
+/* ---- hero ---- */
+.hero { position: relative; height: 100svh; min-height: 560px; overflow: hidden; display: flex; align-items: center; }
+.hero video, .hero .fallback {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;
+}
+.hero .fallback {
+  background:
+    radial-gradient(ellipse 90% 60% at 70% 20%, rgba(36,71,232,0.35), transparent),
+    radial-gradient(ellipse 60% 50% at 20% 80%, rgba(80,140,255,0.18), transparent),
+    linear-gradient(180deg, #0a1128, #05070f);
+}
+.hero .shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(5,7,15,0.35) 0%, rgba(5,7,15,0.15) 45%, rgba(5,7,15,0.85) 100%); }
+.hero-content { position: relative; z-index: 2; padding: 0 42px; max-width: 1200px; margin: 0 auto; width: 100%; }
+.hero h1 {
+  font-family: 'Orbitron', sans-serif; font-weight: 900;
+  font-size: clamp(38px, 7.5vw, 96px); letter-spacing: 0.16em;
+  color: var(--blue);
+  text-shadow: 0 0 40px rgba(36,71,232,0.35), 0 2px 24px rgba(0,0,0,0.6);
+  white-space: nowrap;
+}
+.hero .tag {
+  font-family: 'Orbitron', sans-serif; font-weight: 500;
+  font-size: clamp(12px, 2vw, 21px); letter-spacing: 0.42em;
+  color: #fff; text-transform: uppercase; margin-top: 10px;
+  text-shadow: 0 1px 14px rgba(0,0,0,0.8);
+}
+.hero .cta-row { margin-top: 44px; display: flex; gap: 16px; flex-wrap: wrap; }
+.cta {
+  font-family: 'Orbitron', sans-serif; font-size: 12.5px; letter-spacing: 0.2em;
+  padding: 14px 34px; border-radius: 3px; cursor: pointer; border: 1.5px solid var(--blue);
+}
+.cta.solid { background: var(--blue); color: #fff; }
+.cta.solid:hover { box-shadow: 0 0 30px var(--blue-glow); }
+.cta.ghost { color: #fff; background: rgba(5,7,15,0.3); backdrop-filter: blur(4px); }
+.cta.ghost:hover { background: rgba(36,71,232,0.25); }
+.scroll-cue { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--dim); font-size: 22px; animation: bob 2s infinite; }
+@keyframes bob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
+
+/* ---- sections ---- */
+section { padding: 110px 42px; max-width: 1200px; margin: 0 auto; }
+@media (max-width: 700px) { section { padding: 70px 22px; } }
+.sec-label {
+  font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 0.4em;
+  color: var(--blue); text-transform: uppercase; margin-bottom: 14px;
+}
+.sec-label::before { content: '— '; }
+h2 { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: clamp(24px, 4vw, 40px); letter-spacing: 0.08em; margin-bottom: 24px; }
+.lead { color: var(--dim); max-width: 720px; font-size: 17px; }
+
+/* teams grid */
+.teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; margin-top: 46px; }
+.team-card {
+  background: var(--glass); border: 1px solid var(--line); border-radius: 6px;
+  padding: 30px 28px; backdrop-filter: blur(8px);
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  position: relative; overflow: hidden;
+}
+.team-card::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 44px; height: 2px; background: var(--blue);
+  transition: width 0.3s;
+}
+.team-card:hover { transform: translateY(-4px); border-color: rgba(36,71,232,0.5); box-shadow: 0 14px 44px rgba(36,71,232,0.12); }
+.team-card:hover::before { width: 100%; }
+.team-card h3 { font-family: 'Orbitron', sans-serif; font-size: 16px; letter-spacing: 0.14em; margin-bottom: 12px; }
+.team-card p { color: var(--dim); font-size: 14.5px; }
+
+/* build log strip */
+.log-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 40px; }
+.log-card { background: var(--glass); border: 1px solid var(--line); border-radius: 6px; padding: 22px; }
+.log-card .lc-meta { font-family: 'Orbitron', sans-serif; font-size: 10.5px; letter-spacing: 0.2em; color: var(--blue); text-transform: uppercase; }
+.log-card .lc-title { font-weight: 600; margin: 8px 0 4px; }
+.log-card .lc-body { color: var(--dim); font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.log-card img { width: 100%; height: 140px; object-fit: cover; border-radius: 4px; margin-top: 12px; }
+
+/* stats band */
+.band { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(10,16,34,0.4); }
+.band-inner { max-width: 1200px; margin: 0 auto; padding: 54px 42px; display: flex; flex-wrap: wrap; gap: 40px 80px; justify-content: center; }
+.bstat { text-align: center; }
+.bstat .n { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 40px; color: var(--blue); }
+.bstat .l { font-size: 12.5px; letter-spacing: 0.24em; color: var(--dim); text-transform: uppercase; margin-top: 4px; }
+
+/* footer / contact */
+footer { border-top: 1px solid var(--line); padding: 60px 42px 80px; text-align: center; color: var(--dim); font-size: 14px; }
+footer .f-logo { font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 0.2em; color: var(--blue); font-size: 18px; margin-bottom: 10px; }
+footer a { color: var(--blue); }
+
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s, transform 0.7s; }
+.reveal.in { opacity: 1; transform: none; }
+</style>
 </head>
 <body>
 
-<!-- ===== Header ===== -->
-<header class="topbar">
-  <div class="topbar-inner">
-    <div class="brand" id="brandHome" role="button" tabindex="0">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-        <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-      </svg>
-      <span>BlueHorizon <b>Log</b></span>
-    </div>
-    <div class="topbar-actions">
-      <button class="avatar-btn" id="btnProfile" title="My profile" aria-label="My profile"></button>
-      <button class="icon-btn" id="btnSearch" title="Search" aria-label="Search">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-      <button class="icon-btn" id="btnSync" title="Refresh" aria-label="Refresh">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
-      </button>
-      <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-    </div>
-  </div>
-</header>
-
-<!-- ===== Main views ===== -->
-<main id="main">
-
-  <!-- Home -->
-  <section id="view-home" class="view">
-    <div id="homeWelcome" class="home-welcome"></div>
-
-    <div class="home-section">
-      <div class="home-head"><h3>Team Goals</h3><button class="mini-btn" id="btnAddGoal">+ Goal</button></div>
-      <div id="goalList" class="goal-list"></div>
-    </div>
-
-    <div class="home-section">
-      <div class="home-head"><h3 id="myTasksTitle">My Tasks</h3><button class="mini-btn" id="btnAddTask">+ Task</button></div>
-      <div id="myTaskList" class="task-list"></div>
-    </div>
-
-    <div class="home-section">
-      <div class="home-head"><h3>All Tasks &amp; Deadlines</h3>
-        <button class="mini-btn" id="btnToggleDone">show done</button></div>
-      <div id="allTaskList" class="task-list"></div>
-    </div>
-
-    <div class="home-section">
-      <div class="home-head"><h3>Latest Activity</h3></div>
-      <div id="homeRecent" class="feed-list"></div>
-    </div>
-  </section>
-
-  <!-- Feed -->
-  <section id="view-feed" class="view hidden">
-    <div class="feed-filters" id="feedFilters"></div>
-    <div id="feedList" class="feed-list"></div>
-    <div id="feedEmpty" class="empty hidden">
-      <p class="empty-title">No entries yet</p>
-      <p>Tap <b>+</b> to log your first bit of work.<br>Photos + two sentences is plenty.</p>
-    </div>
-  </section>
-
-  <!-- Photos -->
-  <section id="view-photos" class="view hidden">
-    <div class="feed-filters" id="photoFilters"></div>
-    <div id="photoGrid" class="photo-grid"></div>
-    <div id="photosEmpty" class="empty hidden">
-      <p class="empty-title">No photos yet</p>
-      <p>Photos from every entry land here automatically.</p>
-    </div>
-  </section>
-
-  <!-- Projects -->
-  <section id="view-projects" class="view hidden">
-    <h2 class="page-title">Projects</h2>
-    <div id="projectList" class="project-list"></div>
-    <button class="ghost-btn" id="btnAddProject">+ Add project</button>
-  </section>
-
-  <!-- Single project -->
-  <section id="view-project" class="view hidden">
-    <button class="back-btn" data-back="projects">&larr; Projects</button>
-    <h2 id="projectTitle" class="page-title"></h2>
-    <div id="projectEntries" class="feed-list"></div>
-  </section>
-
-  <!-- Meetings -->
-  <section id="view-meetings" class="view hidden">
-    <h2 class="page-title">Meeting Notes</h2>
-    <button class="ghost-btn" id="btnNewMeeting" style="margin-bottom:12px">+ New meeting notes</button>
-    <div id="meetingList" class="feed-list"></div>
-    <div id="meetingsEmpty" class="empty hidden"><p class="empty-title">No meeting notes yet</p></div>
-  </section>
-
-  <!-- Purchase orders -->
-  <section id="view-pos" class="view hidden">
-    <h2 class="page-title">Purchase Orders</h2>
-    <button class="ghost-btn" id="btnNewPo" style="margin-bottom:8px">＋ New purchase order (builder)</button>
-    <label class="ghost-btn file-btn" for="poFileInput" style="margin-bottom:12px">
-      ⬆ Import existing PO (.xlsx / .csv) for arrival tracking
-    </label>
-    <input id="poFileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
-    <div id="poList" class="project-list"></div>
-    <div id="posEmpty" class="empty hidden"><p class="empty-title">No purchase orders yet</p>
-      <p>Build one from product links, or import the Excel you already send to the purchasing office.</p></div>
-  </section>
-
-  <!-- PO builder -->
-  <section id="view-pob" class="view hidden">
-    <button class="back-btn" data-back="pos">&larr; Purchase Orders</button>
-    <h2 id="pobTitle" class="page-title" style="cursor:pointer" title="Tap to rename"></h2>
-    <div id="pobMeta" class="detail-meta" style="margin-bottom:12px"></div>
-    <button class="ghost-btn" id="btnAddPoItem" style="margin-bottom:12px">+ Add item (paste a product link)</button>
-    <div id="pobItems"></div>
-    <div class="home-section" style="margin-top:18px">
-      <div class="home-head"><h3>Vendors — shipping &amp; 889 compliance</h3></div>
-      <div id="pobVendors"></div>
-    </div>
-    <div id="pobTotals" class="ob-card" style="font-size:15px"></div>
-    <button class="ghost-btn" id="btnExportPo" style="margin-top:10px">📊 Export Excel for purchasing office</button>
-    <button class="text-btn danger" id="btnDeletePo" style="margin-top:8px">Delete this purchase order</button>
-  </section>
-
-  <!-- Single PO -->
-  <section id="view-po" class="view hidden">
-    <button class="back-btn" data-back="pos">&larr; Purchase Orders</button>
-    <h2 id="poTitle" class="page-title"></h2>
-    <div id="poMeta" class="detail-meta" style="margin-bottom:10px"></div>
-    <div class="po-progress"><div id="poProgressBar"></div></div>
-    <div id="poTableWrap" class="table-wrap"></div>
-  </section>
-
-  <!-- Roster -->
-  <section id="view-roster" class="view hidden">
-    <h2 class="page-title">Team Roster</h2>
-    <p class="settings-note" style="margin-bottom:10px">Add a member, then send them an invite link — it sets up their device automatically (repo, access, everything). Emails for reminders are configured separately (never stored publicly) — see the README.</p>
-    <button class="ghost-btn" id="btnInviteLink" style="margin-bottom:10px">🔗 Copy invite link</button>
-    <div id="rosterList" class="project-list"></div>
-    <button class="ghost-btn" id="btnAddMember">+ Add member</button>
-  </section>
-
-  <!-- Resources -->
-  <section id="view-resources" class="view hidden">
-    <h2 class="page-title">Resources</h2>
-    <p class="settings-note" style="margin-bottom:10px">Team links and downloads — Onshape, software, guides. Tap + to add a link or upload a file.</p>
-    <div id="resourceList"></div>
-    <button class="ghost-btn" id="btnAddResource">+ Add resource</button>
-    <input id="resourceFileInput" type="file" hidden>
-  </section>
-
-</main>
-
-<!-- ===== Bottom nav ===== -->
-<nav class="tabbar">
-  <button class="tab active" data-view="home">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span>Home</span>
-  </button>
-  <button class="tab" data-view="feed">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    <span>Feed</span>
-  </button>
-  <button class="fab" id="btnNew" aria-label="New entry">
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </button>
-  <button class="tab" data-view="pos">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-    <span>POs</span>
-  </button>
-  <button class="tab" id="tabMore">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    <span>More</span>
-  </button>
+<nav id="nav">
+  <svg class="logo" viewBox="0 0 40 40" fill="none">
+    <path d="M6 6 L20 34 L23 20 L34 6 L22 14 Z" fill="#2447e8"/>
+  </svg>
+  <a class="nlink" href="#home">Home</a>
+  <a class="nlink" href="#about">About</a>
+  <a class="nlink" href="#teams">Teams</a>
+  <a class="nlink" href="#projects">Projects</a>
+  <a class="nlink" href="#contact">Contact</a>
+  <button class="menu-btn" id="menuBtn">☰</button>
+  <button class="login-btn" onclick="location.href='portal.html'">LOGIN</button>
 </nav>
 
-<!-- ===== More menu ===== -->
-<div id="moreSheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="moreClose">Close</button>
-      <span class="sheet-title">More</span>
-      <span style="width:52px"></span>
+<div class="mobile-menu" id="mobileMenu">
+  <button class="close" id="menuClose">&times;</button>
+  <a href="#home">HOME</a><a href="#about">ABOUT</a><a href="#teams">TEAMS</a>
+  <a href="#projects">PROJECTS</a><a href="#contact">CONTACT</a>
+  <a href="portal.html" style="color:#2447e8">MEMBER LOGIN →</a>
+</div>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="home">
+  <div class="fallback"></div>
+  <video id="heroVideo" autoplay muted loop playsinline preload="metadata">
+    <source src="media/hero.mp4" type="video/mp4">
+  </video>
+  <div class="shade"></div>
+  <div class="hero-content">
+    <h1>BLUE&nbsp;HORIZON</h1>
+    <div class="tag">USAFA Collegiate Rocketry Club</div>
+    <div class="cta-row">
+      <button class="cta solid" onclick="document.getElementById('teams').scrollIntoView()">EXPLORE THE TEAMS</button>
+      <button class="cta ghost" onclick="location.href='portal.html'">MEMBER PORTAL</button>
     </div>
-    <div class="sheet-body more-menu">
-      <button class="more-item" data-goto="photos">📷 Photo Gallery</button>
-      <button class="more-item" data-goto="projects">📁 Projects</button>
-      <button class="more-item" data-goto="meetings">📋 Meeting Notes</button>
-      <button class="more-item" data-goto="resources">🔗 Resources</button>
-      <button class="more-item" id="moreEngineLab">🔥 Engine Lab (sim &amp; injector design)</button>
-      <button class="more-item" data-goto="roster">👥 Team Roster</button>
-      <button class="more-item" id="moreOnboard">🚀 New member onboarding</button>
-      <button class="more-item" id="moreJournal">📓 Write weekly journal</button>
-    </div>
+  </div>
+  <div class="scroll-cue">▾</div>
+</header>
+
+<!-- ============ ABOUT ============ -->
+<section id="about">
+  <div class="sec-label reveal">About us</div>
+  <h2 class="reveal">Cadets building real rockets.</h2>
+  <p class="lead reveal">BlueHorizon is the United States Air Force Academy's collegiate rocketry club — a breeding ground for engineering creativity that competes in national collegiate rocketry competitions and connects cadets with faculty research. Envisioned by a cadet in 2019 at the height of the FalconSat program, the club has grown to more than 50 cadets designing, machining, and flying liquid-propellant rockets — including our own N₂O/IPA engine, built in-house.</p>
+</section>
+
+<div class="band reveal">
+  <div class="band-inner">
+    <div class="bstat"><div class="n">50+</div><div class="l">Cadets</div></div>
+    <div class="bstat"><div class="n">6</div><div class="l">Subteams</div></div>
+    <div class="bstat"><div class="n">100<span style="font-size:22px">lbf</span></div><div class="l">Engine target</div></div>
+    <div class="bstat"><div class="n">2019</div><div class="l">Founded</div></div>
   </div>
 </div>
 
-<!-- ===== Compose sheet ===== -->
-<div id="compose" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="composeCancel">Cancel</button>
-      <div class="seg" id="entryTypeSeg">
-        <button class="seg-btn active" data-type="log">Log</button>
-        <button class="seg-btn" data-type="journal">Journal</button>
-        <button class="seg-btn" data-type="meeting">Meeting</button>
-      </div>
-      <button class="text-btn primary" id="composePost">Post</button>
-    </div>
-
-    <div class="sheet-body">
-      <select id="composeProject" class="input select" aria-label="Project"></select>
-
-      <input id="composeTitle" class="input" type="text" maxlength="120"
-             placeholder="Title (optional — e.g. ‘Igniter test #3’)">
-
-      <textarea id="composeBody" class="input textarea" rows="5"
-                placeholder="What did you do? What worked, what didn’t, what’s next?&#10;&#10;Two sentences beats zero."></textarea>
-
-      <input id="composeVideo" class="input hidden" type="url"
-             placeholder="Video link (YouTube unlisted recommended — free auto-captions)">
-
-      <div class="photo-row" id="composePhotos">
-        <label class="photo-add" for="photoInput">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span>Photos</span>
-        </label>
-        <label class="photo-add" for="fileInput">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-          <span>Files</span>
-        </label>
-        <input id="photoInput" type="file" accept="image/*" multiple hidden>
-        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.pdf,.docx,.pptx,.txt,.md,.vtt,.zip,.step,.stl,.dxf,.mp4,.mov,.webm" multiple hidden>
-      </div>
-      <div id="composeFiles" class="file-list"></div>
-
-      <div class="compose-meta">
-        <span id="composeAuthor"></span>
-        <span id="composeStatus"></span>
-      </div>
-    </div>
+<!-- ============ TEAMS ============ -->
+<section id="teams">
+  <div class="sec-label reveal">The teams</div>
+  <h2 class="reveal">Six subteams. One vehicle.</h2>
+  <div class="teams-grid">
+    <div class="team-card reveal"><h3>PROPULSION</h3><p>Liquid N₂O/IPA engine development — injectors, chamber, nozzle, and the test campaigns that prove them. Home of the throttling and gimbal programs.</p></div>
+    <div class="team-card reveal"><h3>STRUCTURES</h3><p>Airframe, nose cone, landing legs, and the loads analysis that keeps it all in one piece from ignition to recovery.</p></div>
+    <div class="team-card reveal"><h3>CONTROLS</h3><p>Simulation and control algorithms — SIMULINK models, control laws, and the math that keeps the vehicle pointed the right way.</p></div>
+    <div class="team-card reveal"><h3>GSE</h3><p>Ground support equipment: test stands, DAQ, plumbing, and the communications systems that run every static fire.</p></div>
+    <div class="team-card reveal"><h3>AVIONICS</h3><p>Custom flight computers — schematic and PCB design, embedded software, and hardware-in-the-loop testing.</p></div>
+    <div class="team-card reveal"><h3>SUPPORT</h3><p>Purchasing, outreach, media, and the operations backbone that keeps a 50-cadet engineering program moving.</p></div>
   </div>
-</div>
+</section>
 
-<!-- ===== Entry detail ===== -->
-<div id="entrySheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="entryClose">Close</button>
-      <span class="sheet-title" id="entrySheetTitle"></span>
-      <div>
-        <button class="text-btn" id="entryEdit">Edit</button>
-        <button class="text-btn danger" id="entryDelete">Delete</button>
-      </div>
-    </div>
-    <div class="sheet-body" id="entryDetail"></div>
+<!-- ============ PROJECTS / LIVE LOG ============ -->
+<section id="projects">
+  <div class="sec-label reveal">Projects</div>
+  <h2 class="reveal">Latest from the build log</h2>
+  <p class="lead reveal">Live from our internal documentation — what the team worked on most recently.</p>
+  <div class="log-strip" id="logStrip">
+    <div class="log-card"><div class="lc-meta">Loading…</div></div>
   </div>
-</div>
+</section>
 
-<!-- ===== Task sheet ===== -->
-<div id="taskSheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="taskCancel">Cancel</button>
-      <span class="sheet-title" id="taskSheetTitle">New Task</span>
-      <button class="text-btn primary" id="taskSave">Save</button>
-    </div>
-    <div class="sheet-body">
-      <input id="taskTitle" class="input" type="text" maxlength="140" placeholder="Task — e.g. ‘Machine new injector plate’">
-      <textarea id="taskNotes" class="input textarea" rows="3" placeholder="Details (optional)"></textarea>
-      <label class="field-label">Project</label>
-      <select id="taskProject" class="input select"></select>
-      <label class="field-label">Deadline</label>
-      <input id="taskDue" class="input" type="date">
-      <label class="field-label">Assign to</label>
-      <div id="taskAssignees" class="assignee-grid"></div>
-      <button class="text-btn danger hidden" id="taskDelete" style="align-self:flex-start">Delete task</button>
-    </div>
-  </div>
-</div>
+<!-- ============ CONTACT ============ -->
+<footer id="contact">
+  <div class="f-logo">BLUE HORIZON</div>
+  <p>USAFA Collegiate Rocketry Club · United States Air Force Academy, CO</p>
+  <p style="margin-top:8px">Interested in sponsoring or joining? <a href="mailto:bluehorizon.rocketry@gmail.com">bluehorizon.rocketry@gmail.com</a></p>
+  <p style="margin-top:20px;font-size:12px;opacity:.6">© 2026 BlueHorizon Rocketry · <a href="portal.html">Member portal</a></p>
+</footer>
 
-<!-- ===== Search overlay ===== -->
-<div id="searchOverlay" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="searchClose">Close</button>
-      <input id="searchInput" class="input" type="search" placeholder="Search everything…" style="margin:0 10px">
-      <span style="width:12px"></span>
-    </div>
-    <div class="sheet-body" id="searchResults"></div>
-  </div>
-</div>
+<script>
+'use strict';
+// nav scroll state
+const nav = document.getElementById('nav');
+addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 40), { passive: true });
 
-<!-- ===== Identity picker ===== -->
-<div id="whoSheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <span style="width:52px"></span>
-      <span class="sheet-title">Who are you?</span>
-      <span style="width:52px"></span>
-    </div>
-    <div class="sheet-body">
-      <p class="settings-note">Pick your name so entries and tasks are linked to you on this device.</p>
-      <div id="whoList" class="more-menu"></div>
-      <button class="ghost-btn" id="whoSkip">I’m not on the list</button>
-    </div>
-  </div>
-</div>
+// mobile menu
+const mm = document.getElementById('mobileMenu');
+document.getElementById('menuBtn').onclick = () => mm.classList.add('open');
+document.getElementById('menuClose').onclick = () => mm.classList.remove('open');
+mm.querySelectorAll('a').forEach(a => a.onclick = () => mm.classList.remove('open'));
 
-<!-- ===== PO item sheet ===== -->
-<div id="poItemSheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="poItemCancel">Cancel</button>
-      <span class="sheet-title" id="poItemTitle">Add Item</span>
-      <button class="text-btn primary" id="poItemSave">Add</button>
-    </div>
-    <div class="sheet-body">
-      <div style="display:flex;gap:8px">
-        <input id="piUrl" class="input" type="url" placeholder="Paste product link (Amazon, McMaster, DigiKey…)" style="flex:1">
-        <button class="mini-btn" id="piAutofill" style="flex:0 0 auto">Autofill</button>
-      </div>
-      <p class="settings-note" id="piAutofillNote" style="margin-top:-6px"></p>
-      <input id="piName" class="input" type="text" placeholder="Part name *">
-      <input id="piVendor" class="input" type="text" placeholder="Vendor * (e.g. Amazon, McMaster)">
-      <div style="display:flex;gap:8px">
-        <input id="piCost" class="input" type="number" min="0" step="0.01" placeholder="Unit cost $ *" style="flex:1">
-        <input id="piQty" class="input" type="number" min="1" step="1" value="1" placeholder="Qty" style="flex:1">
-      </div>
-      <input id="piQtyDesc" class="input" type="text" placeholder="Qty descriptor (e.g. ‘pack of 20 bolts’)">
-      <label class="field-label">Team / Project</label>
-      <select id="piTeam" class="input select"></select>
-      <textarea id="piJust" class="input textarea" rows="2" placeholder="Justification — why does the team need this? *"></textarea>
-      <div class="seg" id="piDeliverySeg" style="align-self:flex-start">
-        <button class="seg-btn active" data-del="Delivery">Delivery</button>
-        <button class="seg-btn" data-del="Pickup">Pickup</button>
-      </div>
-      <input id="piNotes" class="input" type="text" placeholder="Notes (optional)">
-    </div>
-  </div>
-</div>
+// hero video: hide gracefully if media/hero.mp4 doesn't exist yet
+const hv = document.getElementById('heroVideo');
+hv.addEventListener('error', () => hv.remove(), true);
+hv.querySelector('source').addEventListener('error', () => hv.remove());
 
-<!-- ===== Profile sheet ===== -->
-<div id="profileSheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="profileClose">Close</button>
-      <span class="sheet-title">My Profile</span>
-      <span style="width:52px"></span>
-    </div>
-    <div class="sheet-body" style="align-items:center">
-      <label for="avatarInput" class="avatar-big" id="profileAvatar" title="Tap to change photo"></label>
-      <input id="avatarInput" type="file" accept="image/*" hidden>
-      <div id="profileName" style="font-size:19px;font-weight:700"></div>
-      <div id="profileStats" class="settings-note" style="text-align:center"></div>
-      <button class="ghost-btn" id="profileSwitch">Switch person</button>
-      <div id="profileEntries" class="feed-list" style="width:100%"></div>
-    </div>
-  </div>
-</div>
+// reveal on scroll
+const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }),
+  { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-<!-- ===== Onboarding wizard ===== -->
-<div id="onboardSheet" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="onboardSkip">Skip</button>
-      <span class="sheet-title" id="onboardStep">Welcome</span>
-      <button class="text-btn primary" id="onboardNext">Next</button>
-    </div>
-    <div class="sheet-body" id="onboardBody"></div>
-  </div>
-</div>
-
-<!-- ===== Lightbox ===== -->
-<div id="lightbox" class="lightbox hidden">
-  <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
-  <img id="lightboxImg" alt="">
-  <div class="lightbox-caption" id="lightboxCaption"></div>
-</div>
-
-<!-- ===== Sheet viewer (xlsx/csv) ===== -->
-<div id="sheetViewer" class="sheet hidden">
-  <div class="sheet-card wide">
-    <div class="sheet-head">
-      <button class="text-btn" id="sheetViewerClose">Close</button>
-      <span class="sheet-title" id="sheetViewerTitle"></span>
-      <a class="text-btn primary" id="sheetViewerDownload" download>Download</a>
-    </div>
-    <div class="sheet-body table-wrap" id="sheetViewerBody"></div>
-  </div>
-</div>
-
-<!-- ===== Settings sheet ===== -->
-<div id="settings" class="sheet hidden">
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <button class="text-btn" id="settingsCancel">Cancel</button>
-      <span class="sheet-title">Settings</span>
-      <button class="text-btn primary" id="settingsSave">Save</button>
-    </div>
-    <div class="sheet-body">
-      <label class="field-label">Your name <span class="hint">shown on your entries</span></label>
-      <input id="setName" class="input" type="text" placeholder="e.g. Grant S.">
-
-      <label class="field-label">GitHub repo <span class="hint">where entries &amp; photos are stored</span></label>
-      <input id="setRepo" class="input" type="text" placeholder="owner/repo  e.g. grantstec/BlueHorizon-Log">
-
-      <label class="field-label">Branch</label>
-      <input id="setBranch" class="input" type="text" placeholder="main">
-
-      <label class="field-label">GitHub token <span class="hint">needed to post — ask your team lead</span></label>
-      <input id="setToken" class="input" type="password" placeholder="github_pat_...">
-
-      <p class="settings-note">Reading works without a token if the repo is public. Posting always needs a token with <b>Contents: read &amp; write</b> on the repo above. Stored only on this device.</p>
-      <p class="settings-note" id="connTest"></p>
-      <button class="ghost-btn" id="btnTestConn">Test connection</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast" class="toast hidden"></div>
-
-<script src="app.js"></script>
+// live build log (public read of the club's documentation index)
+(async () => {
+  const strip = document.getElementById('logStrip');
+  try {
+    const base = 'https://raw.githubusercontent.com/grantstec/BlueHorizon-Log/main/';
+    const idx = await fetch(base + 'data/index.json').then(r => r.json());
+    const pub = idx.filter(e => e.type !== 'meeting').slice(0, 6);
+    if (!pub.length) throw new Error('empty');
+    strip.innerHTML = '';
+    const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    pub.forEach(e => {
+      const d = document.createElement('div');
+      d.className = 'log-card';
+      d.innerHTML = `<div class="lc-meta">${esc(e.project || e.type)}</div>
+        <div class="lc-title">${esc(e.title || 'Work log')}</div>
+        <div class="lc-body">${esc(e.body || '')}</div>
+        ${e.photos && e.photos[0] ? `<img loading="lazy" alt="" src="${base}${esc(e.photos[0])}">` : ''}`;
+      strip.appendChild(d);
+    });
+  } catch {
+    strip.innerHTML = '<div class="log-card"><div class="lc-meta">Build log</div><div class="lc-body">Recent work appears here automatically once the team posts to the portal.</div></div>';
+  }
+})();
+</script>
 </body>
 </html>

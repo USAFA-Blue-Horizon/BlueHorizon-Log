@@ -28,12 +28,19 @@ const DEFAULT_PROJECTS = [
 ];
 
 const cfg = {
-  get name()   { return localStorage.getItem('bh_name')   || ''; },
-  get rid()    { return localStorage.getItem('bh_rid')    || ''; },
-  get repo()   { return localStorage.getItem('bh_repo')   || ''; },
-  get branch() { return localStorage.getItem('bh_branch') || 'main'; },
-  get token()  { return localStorage.getItem('bh_token')  || ''; },
-  set(k, v)    { localStorage.setItem('bh_' + k, String(v).trim()); },
+  get name()    { return localStorage.getItem('bh_name')    || ''; },
+  get rid()     { return localStorage.getItem('bh_rid')     || ''; },
+  get repo()    { return localStorage.getItem('bh_repo')    || ''; },
+  get branch()  { return localStorage.getItem('bh_branch')  || 'main'; },
+  get token()   { return localStorage.getItem('bh_token')   || ''; },
+  get portal()  { return (localStorage.getItem('bh_portal') || '').replace(/\/+$/, ''); },
+  get session() { return localStorage.getItem('bh_session') || ''; },
+  get role()    { return localStorage.getItem('bh_role')    || ''; },
+  set(k, v)     { localStorage.setItem('bh_' + k, String(v).trim()); },
+  del(k)        { localStorage.removeItem('bh_' + k); },
+  get portalMode() { return !!this.portal; },
+  get signedIn()   { return this.portalMode && !!this.session; },
+  get canWrite()   { return this.portalMode ? (this.signedIn && this.role !== 'pending') : !!this.token; },
 };
 
 const state = {
@@ -68,11 +75,14 @@ const $ = (id) => document.getElementById(id);
 /* ---------- GitHub API ---------- */
 
 const api = {
-  base() { return `https://api.github.com/repos/${cfg.repo}`; },
+  base() {
+    return cfg.portalMode ? `${cfg.portal}/api/gh` : `https://api.github.com/repos/${cfg.repo}`;
+  },
 
   headers(extra = {}) {
     const h = { Accept: 'application/vnd.github+json', ...extra };
-    if (cfg.token) h.Authorization = `Bearer ${cfg.token}`;
+    if (cfg.portalMode) { if (cfg.session) h.Authorization = `Bearer ${cfg.session}`; }
+    else if (cfg.token) h.Authorization = `Bearer ${cfg.token}`;
     return h;
   },
 
@@ -481,6 +491,7 @@ function renderRoster() {
     list.appendChild(div);
   });
   if (!state.roster.length) list.innerHTML = '<p class="settings-note">No members yet. Add the team so tasks can be assigned and everyone can pick their name.</p>';
+  renderUserAdmin();
 }
 
 async function addMember() {
@@ -754,6 +765,20 @@ const PROXIES = [
 ];
 
 async function proxyFetchText(target) {
+  // own Worker first — immune to campus filtering
+  if (cfg.signedIn) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 15000);
+      const r = await fetch(`${cfg.portal}/api/fetch?url=${encodeURIComponent(target)}`,
+        { headers: { Authorization: `Bearer ${cfg.session}` }, signal: ctrl.signal });
+      clearTimeout(t);
+      if (r.ok) {
+        const text = await r.text();
+        if (text && text.length > 50) return text;
+      }
+    } catch { /* fall through */ }
+  }
   for (const p of PROXIES) {
     try {
       const ctrl = new AbortController();
@@ -928,10 +953,19 @@ async function check889(po, vendor, card) {
   const status = (msg) => { box.innerHTML = `<p class="settings-note">${esc(msg)}</p>`; };
   status('Searching SAM.gov via GSA 889 tool…');
   try {
-    const target = `https://889.smartpay.gsa.gov/api/entity-information/v3/entities?samToolsSearch=${encodeURIComponent(vendor)}&page=0`;
     let j = null;
-    const direct = await proxyFetchText(target);
-    if (direct) { try { j = JSON.parse(direct); } catch {} }
+    if (cfg.signedIn) { // own Worker's dedicated 889 endpoint
+      try {
+        const r = await fetch(`${cfg.portal}/api/889?q=${encodeURIComponent(vendor)}`,
+          { headers: { Authorization: `Bearer ${cfg.session}` } });
+        if (r.ok) j = await r.json();
+      } catch { /* fall through */ }
+    }
+    const target = `https://889.smartpay.gsa.gov/api/entity-information/v3/entities?samToolsSearch=${encodeURIComponent(vendor)}&page=0`;
+    if (!j) {
+      const direct = await proxyFetchText(target);
+      if (direct) { try { j = JSON.parse(direct); } catch {} }
+    }
     if (!j) j = await relayLookup('889', vendor, status);
     const ents = (j.entityData || []).slice(0, 6);
     if (!ents.length) {
@@ -1149,7 +1183,9 @@ function openProfile() {
   const mine = state.entries.filter((e) => (e.authorRid && e.authorRid === cfg.rid) || e.author === cfg.name);
   const openTasks = state.team.tasks.filter((t) => t.status !== 'done' && (t.assignees || []).includes(cfg.rid));
   const photos = mine.reduce((n, e) => n + (e.photos || []).length, 0);
-  $('profileStats').textContent = `${mine.length} entries · ${photos} photos · ${openTasks.length} open tasks. Tap the picture to change it.`;
+  $('profileStats').textContent = `${mine.length} entries · ${photos} photos · ${openTasks.length} open tasks. Tap the picture to change it.` +
+    (cfg.portalMode && cfg.signedIn ? ` Signed in (${cfg.role}).` : '');
+  $('profileSwitch').textContent = cfg.portalMode && cfg.signedIn ? 'Sign out' : 'Switch person';
   const list = $('profileEntries');
   list.innerHTML = '';
   mine.slice(0, 5).forEach((e) => list.appendChild(entryCard(e)));
@@ -1867,6 +1903,7 @@ function openSettings(firstRun = false) {
   $('setRepo').value = cfg.repo;
   $('setBranch').value = cfg.branch;
   $('setToken').value = cfg.token;
+  $('setPortal').value = cfg.portal;
   $('connTest').textContent = firstRun ? 'Welcome! Point the app at your club’s GitHub repo to get started.' : '';
   $('settings').classList.remove('hidden');
 }
@@ -1876,8 +1913,10 @@ async function saveSettings() {
   cfg.set('repo', $('setRepo').value.replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, ''));
   cfg.set('branch', $('setBranch').value || 'main');
   cfg.set('token', $('setToken').value);
+  cfg.set('portal', $('setPortal').value.trim().replace(/\/+$/, ''));
   $('settings').classList.add('hidden');
   state.blobCache.clear();
+  if (cfg.portalMode && !cfg.signedIn) openAuth();
   loadAll();
 }
 
@@ -1913,8 +1952,105 @@ function switchView(v) {
 }
 
 function requireToken() {
+  if (cfg.portalMode) {
+    if (!cfg.signedIn) { openAuth(); return false; }
+    if (cfg.role === 'pending') { toast('Your account is awaiting admin approval', true); return false; }
+    return true;
+  }
   if (!cfg.token) { toast('Add a GitHub token in Settings first', true); openSettings(); return false; }
   return true;
+}
+
+/* ----- portal accounts (Cloudflare Worker backend) ----- */
+
+let authMode = 'login';
+
+function openAuth() {
+  authMode = 'login';
+  renderAuthMode();
+  $('authMsg').textContent = '';
+  $('authSheet').classList.remove('hidden');
+}
+
+function renderAuthMode() {
+  const signup = authMode === 'signup';
+  $('authTitle').textContent = signup ? 'Create account' : 'Sign in';
+  $('authSubmit').textContent = signup ? 'Create account' : 'Sign in';
+  $('authName').classList.toggle('hidden', !signup);
+  $('authToggle').textContent = signup ? 'Have an account? Sign in' : 'New here? Create an account';
+}
+
+async function submitAuth() {
+  const username = $('authUser').value.trim();
+  const password = $('authPass').value;
+  const msg = $('authMsg');
+  if (!username || !password) { msg.textContent = 'Username and password required.'; return; }
+  const body = { username, password };
+  if (authMode === 'signup') {
+    body.name = $('authName').value.trim();
+    if (!body.name) { msg.textContent = 'Name required.'; return; }
+  }
+  msg.textContent = 'Working…';
+  try {
+    const r = await fetch(`${cfg.portal}/api/${authMode}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!r.ok) { msg.textContent = j.error || `Error ${r.status}`; return; }
+    cfg.set('session', j.token);
+    cfg.set('role', j.role);
+    cfg.set('name', j.name);
+    $('authSheet').classList.add('hidden');
+    toast(j.message || `Signed in as ${j.name} ✓`);
+    render();
+    loadAll(false);
+    if (j.role === 'pending') toast('Account created — ask your admin to approve you', true);
+  } catch (e) {
+    msg.textContent = 'Can’t reach the portal server — check the URL in Settings.';
+  }
+}
+
+function signOut() {
+  cfg.del('session'); cfg.del('role');
+  toast('Signed out');
+  render();
+  openAuth();
+}
+
+/* admin: pending approvals & roles (portal mode) */
+async function renderUserAdmin() {
+  const list = $('rosterList');
+  if (!cfg.portalMode || cfg.role !== 'admin') return;
+  try {
+    const r = await fetch(`${cfg.portal}/api/users`, { headers: { Authorization: `Bearer ${cfg.session}` } });
+    if (!r.ok) return;
+    const users = await r.json();
+    const box = document.createElement('div');
+    box.style.marginBottom = '14px';
+    box.innerHTML = '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin:4px 0 8px">Accounts</h3>';
+    users.forEach((u) => {
+      const row = document.createElement('div');
+      row.className = 'project-card';
+      const roleSel = `<select class="input select" style="width:auto;padding:6px 10px" data-user="${esc(u.username)}">
+        ${['pending', 'member', 'lead', 'admin', 'remove'].map((r2) =>
+          `<option value="${r2}" ${u.role === r2 ? 'selected' : ''}>${r2}</option>`).join('')}</select>`;
+      row.innerHTML = `<div><div class="project-name">${esc(u.name)} <span class="project-count">@${esc(u.username)}</span>
+        ${u.role === 'pending' ? '<span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24">needs approval</span>' : ''}</div></div>${roleSel}`;
+      row.querySelector('select').onchange = async (ev) => {
+        const role = ev.target.value;
+        if (role === 'remove' && !confirm(`Remove account @${u.username}?`)) { ev.target.value = u.role; return; }
+        await fetch(`${cfg.portal}/api/users/role`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.session}` },
+          body: JSON.stringify({ username: u.username, role }),
+        });
+        toast(role === 'remove' ? 'Account removed' : `@${u.username} → ${role} ✓`);
+        renderRoster();
+      };
+      box.appendChild(row);
+    });
+    list.prepend(box);
+  } catch { /* worker unreachable — skip */ }
 }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -1954,9 +2090,39 @@ function wire() {
   $('moreJournal').onclick = () => { $('moreSheet').classList.add('hidden'); state.composeType = 'journal'; openCompose(); };
   $('moreOnboard').onclick = () => { $('moreSheet').classList.add('hidden'); openOnboarding(); };
   $('moreEngineLab').onclick = () => { $('moreSheet').classList.add('hidden'); window.open('engine-lab.html', '_blank', 'noopener'); };
+
+  // auth
+  $('authSubmit').onclick = submitAuth;
+  $('authToggle').onclick = () => { authMode = authMode === 'login' ? 'signup' : 'login'; renderAuthMode(); };
+  $('authAdvanced').onclick = () => { $('authSheet').classList.add('hidden'); openSettings(); };
+  $('authPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuth(); });
+
+  // hero video (public site) uploader
+  $('moreHero').onclick = () => {
+    $('moreSheet').classList.add('hidden');
+    if (!requireToken()) return;
+    if (cfg.portalMode && !['admin', 'lead'].includes(cfg.role)) { toast('Admins and leads only', true); return; }
+    $('heroInput').click();
+  };
+  $('heroInput').onchange = async (ev) => {
+    const f = ev.target.files[0];
+    ev.target.value = '';
+    if (!f) return;
+    if (f.size > 40 * 1048576) { toast('Keep the hero video under 40 MB (trim/compress the montage)', true); return; }
+    try {
+      toast('Uploading hero video — this can take a minute…');
+      const sha = await api.sha('media/hero.mp4');
+      await api.write('media/hero.mp4', f, 'site: update hero video', sha);
+      toast('Hero video updated ✓ (public site refreshes in ~1 min)');
+    } catch (e) { toast(e.message, true); }
+  };
   $('btnProfile').onclick = openProfile;
   $('profileClose').onclick = () => $('profileSheet').classList.add('hidden');
-  $('profileSwitch').onclick = () => { $('profileSheet').classList.add('hidden'); openWhoPicker(); };
+  $('profileSwitch').onclick = () => {
+    $('profileSheet').classList.add('hidden');
+    if (cfg.portalMode && cfg.signedIn) signOut();
+    else openWhoPicker();
+  };
   $('avatarInput').onchange = (ev) => { if (ev.target.files[0]) uploadAvatar(ev.target.files[0]); ev.target.value = ''; };
   $('btnInviteLink').onclick = copyInviteLink;
   $('btnAddResource').onclick = addResource;
@@ -2067,7 +2233,7 @@ function wire() {
   $('sheetViewerClose').onclick = () => $('sheetViewer').classList.add('hidden');
   $('whoSkip').onclick = () => { localStorage.setItem('bh_who_skipped', '1'); $('whoSheet').classList.add('hidden'); };
 
-  ['compose', 'entrySheet', 'settings', 'moreSheet', 'taskSheet', 'searchOverlay', 'sheetViewer', 'profileSheet', 'poItemSheet'].forEach((id) => {
+  ['compose', 'entrySheet', 'settings', 'moreSheet', 'taskSheet', 'searchOverlay', 'sheetViewer', 'profileSheet', 'poItemSheet', 'authSheet'].forEach((id) => {
     $(id).addEventListener('click', (e) => { if (e.target === $(id)) $(id).classList.add('hidden'); });
   });
 }
@@ -2081,6 +2247,7 @@ window.addEventListener('load', () => {
   render();
   loadAll();
   if (state.invited) toast('Welcome! Setting things up…');
+  if (cfg.portalMode && !cfg.signedIn) openAuth();
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
