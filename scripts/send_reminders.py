@@ -35,12 +35,37 @@ def load_json(path, fallback):
         return fallback
 
 
+def fetch_portal_emails():
+    """Pull member emails from the portal server (accounts set their own email).
+    Needs PORTAL_URL + ACTION_KEY secrets; returns {rid_or_name_lower: email}."""
+    portal = os.environ.get("PORTAL_URL")
+    key = os.environ.get("ACTION_KEY")
+    if not portal or not key:
+        return {}
+    try:
+        import requests
+        r = requests.get(f"{portal.rstrip('/')}/api/emails",
+                         headers={"Authorization": f"Bearer {key}"}, timeout=30)
+        r.raise_for_status()
+        out = {}
+        for u in r.json():
+            if u.get("email"):
+                if u.get("rid"):
+                    out[u["rid"]] = u["email"]
+                out[u["name"].strip().lower()] = u["email"]
+        return out
+    except Exception as e:
+        print(f"portal email fetch failed: {e}")
+        return {}
+
+
 def main():
     user = os.environ.get("MAIL_USERNAME")
     pwd = os.environ.get("MAIL_PASSWORD")
     emails = json.loads(os.environ.get("ROSTER_EMAILS") or "{}")
+    emails.update(fetch_portal_emails())  # portal accounts take precedence
     server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    app_url = os.environ.get("APP_URL", "")
+    app_url = os.environ.get("APP_URL", "https://bluehorizon.club/portal.html")
 
     if not user or not pwd:
         print("MAIL_USERNAME / MAIL_PASSWORD secrets not set — skipping.")
@@ -73,7 +98,7 @@ def main():
             per_person.setdefault(rid, []).append(line)
 
     for rid, lines in per_person.items():
-        email = emails.get(rid)
+        email = emails.get(rid) or emails.get(roster.get(rid, "").strip().lower())
         if not email:
             print(f"No email configured for roster id '{rid}' — skipping.")
             continue
