@@ -37,9 +37,10 @@ const cfg = {
   get repo()    { return localStorage.getItem('bh_repo')    || DEFAULT_REPO; },
   get branch()  { return localStorage.getItem('bh_branch')  || 'main'; },
   get token()   { return localStorage.getItem('bh_token')   || ''; },
-  get portal()  { return (localStorage.getItem('bh_portal') ?? DEFAULT_PORTAL).replace(/\/+$/, ''); },
+  get portal()  { const v = localStorage.getItem('bh_portal'); return ((v == null || v === '') ? DEFAULT_PORTAL : v).replace(/\/+$/, ''); },
   get session() { return localStorage.getItem('bh_session') || ''; },
   get role()    { return localStorage.getItem('bh_role')    || ''; },
+  get email()   { return localStorage.getItem('bh_email')   || ''; },
   set(k, v)     { localStorage.setItem('bh_' + k, String(v).trim()); },
   del(k)        { localStorage.removeItem('bh_' + k); },
   get portalMode() { return !!this.portal; },
@@ -807,7 +808,7 @@ const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 /* Relay a lookup through GitHub Actions: commit a request file, poll for the answer. */
 async function relayLookup(kind, query, onStatus) {
-  if (!cfg.token) throw new Error('needs a GitHub token (Settings)');
+  if (!cfg.canWrite) throw new Error('sign in (or add a token) first');
   const id = uid();
   onStatus('Direct fetch blocked — relaying via GitHub…');
   await api.write(`data/lookups/requests/${id}.json`,
@@ -1203,10 +1204,83 @@ function openProfile() {
   $('profileStats').textContent = `${mine.length} entries · ${photos} photos · ${openTasks.length} open tasks. Tap the picture to change it.` +
     (cfg.portalMode && cfg.signedIn ? ` Signed in (${cfg.role}).` : '');
   $('profileSwitch').textContent = cfg.portalMode && cfg.signedIn ? 'Sign out' : 'Switch person';
+  // email editor only makes sense with an account (portal mode)
+  $('profileEmailRow').classList.toggle('hidden', !cfg.signedIn);
+  if (cfg.signedIn) {
+    $('profileEmail').value = cfg.email;
+    // pull the authoritative email from the server in the background
+    fetch(`${cfg.portal}/api/me`, { headers: { Authorization: `Bearer ${cfg.session}` } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((me) => { if (me && me.email != null) { cfg.set('email', me.email || ''); if (!$('profileEmail').value) $('profileEmail').value = me.email || ''; } })
+      .catch(() => {});
+  }
   const list = $('profileEntries');
   list.innerHTML = '';
   mine.slice(0, 5).forEach((e) => list.appendChild(entryCard(e)));
   $('profileSheet').classList.remove('hidden');
+}
+
+async function saveProfileEmail() {
+  const email = $('profileEmail').value.trim();
+  try {
+    const r = await fetch(`${cfg.portal}/api/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.session}` },
+      body: JSON.stringify({ email }),
+    });
+    if (!r.ok) throw new Error('save failed');
+    cfg.set('email', email);
+    toast(email ? 'Email saved ✓ — you’ll get reminders' : 'Email cleared');
+  } catch (e) { toast('Couldn’t save email — try again', true); }
+}
+
+/* ----- forgot / reset password ----- */
+
+async function forgotPassword() {
+  const username = ($('authUser').value || '').trim() || prompt('Enter your username to reset your password:');
+  if (!username || !username.trim()) return;
+  $('authMsg').textContent = 'Sending reset email…';
+  try {
+    await fetch(`${cfg.portal}/api/forgot`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username.trim() }),
+    });
+  } catch {}
+  // always show the same message (don’t reveal whether the account exists)
+  $('authMsg').textContent = 'If that account has an email on file, a reset link is on its way. Check your inbox (and spam).';
+}
+
+function parseResetLink() {
+  const m = location.hash.match(/#reset=([^:]+):(.+)$/);
+  if (!m) return;
+  state.resetUser = decodeURIComponent(m[1]);
+  state.resetToken = m[2];
+  history.replaceState(null, '', location.pathname + location.search);
+  $('authSheet').classList.add('hidden');
+  $('resetWho').textContent = `Resetting password for @${state.resetUser}.`;
+  $('resetMsg').textContent = '';
+  $('resetPass').value = '';
+  $('resetSheet').classList.remove('hidden');
+}
+
+async function submitReset() {
+  const password = $('resetPass').value;
+  const msg = $('resetMsg');
+  if (!password || password.length < 8) { msg.textContent = 'Password must be at least 8 characters.'; return; }
+  msg.textContent = 'Updating…';
+  try {
+    const r = await fetch(`${cfg.portal}/api/reset`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: state.resetUser, token: state.resetToken, password }),
+    });
+    const j = await r.json();
+    if (!r.ok) { msg.textContent = j.error || 'Reset link is invalid or expired — request a new one.'; return; }
+    cfg.set('session', j.token); cfg.set('role', j.role); cfg.set('name', j.name);
+    $('resetSheet').classList.add('hidden');
+    toast('Password updated — you’re signed in ✓');
+    await linkRosterIdentity();
+    render(); loadAll(false);
+  } catch { msg.textContent = 'Couldn’t reach the server — try again.'; }
 }
 
 function openWhoPicker() {
@@ -1605,8 +1679,7 @@ function openLightbox(path, entry) {
 /* ----- compose ----- */
 
 function openCompose(isEdit = false) {
-  if (!cfg.repo) { openSettings(true); return; }
-  if (!cfg.token) { toast('Add a GitHub token in Settings to post', true); openSettings(); return; }
+  if (!requireToken()) return;   // portal-aware: signed-in + approved, or a token in token-mode
   if (!isEdit) {
     state.editingId = null;
     state.keepPhotos = [];
@@ -2048,6 +2121,7 @@ async function submitAuth() {
     cfg.set('session', j.token);
     cfg.set('role', j.role);
     cfg.set('name', j.name);
+    if (authMode === 'signup' && body.email) cfg.set('email', body.email);
     $('authSheet').classList.add('hidden');
     toast(j.message || `Signed in as ${j.name} ✓`);
     await linkRosterIdentity();
@@ -2144,7 +2218,12 @@ function wire() {
   $('authSubmit').onclick = submitAuth;
   $('authToggle').onclick = () => { authMode = authMode === 'login' ? 'signup' : 'login'; renderAuthMode(); };
   $('authAdvanced').onclick = () => { $('authSheet').classList.add('hidden'); openSettings(); };
+  $('authForgot').onclick = forgotPassword;
   $('authPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuth(); });
+  $('profileEmailSave').onclick = saveProfileEmail;
+  $('resetCancel').onclick = () => $('resetSheet').classList.add('hidden');
+  $('resetSubmit').onclick = submitReset;
+  $('resetPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitReset(); });
 
   // new club repo (org)
   $('moreNewRepo').onclick = () => {
@@ -2321,7 +2400,7 @@ function wire() {
   $('sheetViewerClose').onclick = () => $('sheetViewer').classList.add('hidden');
   $('whoSkip').onclick = () => { localStorage.setItem('bh_who_skipped', '1'); $('whoSheet').classList.add('hidden'); };
 
-  ['compose', 'entrySheet', 'settings', 'moreSheet', 'taskSheet', 'searchOverlay', 'sheetViewer', 'profileSheet', 'poItemSheet', 'authSheet', 'repoSheet'].forEach((id) => {
+  ['compose', 'entrySheet', 'settings', 'moreSheet', 'taskSheet', 'searchOverlay', 'sheetViewer', 'profileSheet', 'poItemSheet', 'authSheet', 'repoSheet', 'resetSheet'].forEach((id) => {
     $(id).addEventListener('click', (e) => { if (e.target === $(id)) $(id).classList.add('hidden'); });
   });
 }
@@ -2335,7 +2414,8 @@ window.addEventListener('load', () => {
   render();
   loadAll();
   if (state.invited) toast('Welcome! Setting things up…');
-  if (cfg.portalMode && !cfg.signedIn) openAuth();
+  if (/#reset=/.test(location.hash)) { parseResetLink(); }
+  else if (cfg.portalMode && !cfg.signedIn) openAuth();
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

@@ -351,7 +351,25 @@
       <button class="btn-primary" id="authSubmit">Sign in</button>
       <p class="settings-note" id="authMsg"></p>
       <button class="text-btn" id="authToggle">New here? Create an account</button>
+      <button class="text-btn" id="authForgot">Forgot password?</button>
       <button class="text-btn" id="authAdvanced" style="opacity:.6">Advanced: use a GitHub token instead</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Password reset (from email link) ===== -->
+<div id="resetSheet" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <button class="text-btn" id="resetCancel">Cancel</button>
+      <span class="sheet-title">Set a new password</span>
+      <span style="width:52px"></span>
+    </div>
+    <div class="sheet-body">
+      <p class="settings-note" id="resetWho"></p>
+      <input id="resetPass" class="input" type="password" autocomplete="new-password" placeholder="New password (min 8 characters)">
+      <button class="btn-primary" id="resetSubmit">Update password</button>
+      <p class="settings-note" id="resetMsg"></p>
     </div>
   </div>
 </div>
@@ -418,6 +436,13 @@
       <input id="avatarInput" type="file" accept="image/*" hidden>
       <div id="profileName" style="font-size:19px;font-weight:700"></div>
       <div id="profileStats" class="settings-note" style="text-align:center"></div>
+      <div id="profileEmailRow" style="width:100%">
+        <label class="field-label">Email <span class="hint">for task &amp; journal reminders and password recovery</span></label>
+        <div style="display:flex;gap:8px">
+          <input id="profileEmail" class="input" type="email" placeholder="you@example.com" style="flex:1">
+          <button class="mini-btn" id="profileEmailSave" style="flex:0 0 auto">Save</button>
+        </div>
+      </div>
       <button class="ghost-btn" id="profileSwitch">Switch person</button>
       <div id="profileEntries" class="feed-list" style="width:100%"></div>
     </div>
