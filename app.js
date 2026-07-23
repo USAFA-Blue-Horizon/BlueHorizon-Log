@@ -1025,28 +1025,54 @@ function openPoItemSheet(itemId = null) {
   $('poItemSheet').classList.remove('hidden');
 }
 
+/* Titles a bot-block page hands back — never use these as a product name. */
+function isJunkTitle(t) {
+  return !t || t.length < 3 || /^(just a moment|access denied|attention required|are you (a )?(human|robot)|captcha|pardon the interruption|checking your browser|403|forbidden|error|request unsuccessful|security check|unusual traffic|verify you are)/i.test(t.trim());
+}
+function isBotWall(html) {
+  return /just a moment|cf-browser-verification|challenge-platform|Pardon the Interruption|Access Denied|Request unsuccessful\. Incapsula|unusual traffic from your/i.test(html);
+}
+
 async function autofillFromLink() {
   const url = $('piUrl').value.trim();
   if (!url) { toast('Paste a product link first', true); return; }
   const note = $('piAutofillNote');
   const status = (msg) => { note.textContent = msg; };
   if (!$('piVendor').value) $('piVendor').value = vendorFromUrl(url);
-  // McMaster blocks ALL automated reads (bots, proxies, even server-side) —
-  // extract the part number from the URL instead of erroring out.
+
+  // Vendors that serve a bot-challenge to every automated request. Fetching them
+  // returns a "Just a moment…" / "Access Denied" page, so pull the part number
+  // straight from the URL instead of filling the name with garbage.
   if (/mcmaster\.com/i.test(url)) {
     const pm = url.match(/mcmaster\.com\/([A-Za-z0-9-]+)/);
     if (pm && !$('piName').value) $('piName').value = `McMaster ${pm[1]}`;
     status('McMaster blocks all robots — part number filled from the link; copy the price and full name from their page.');
     return;
   }
+  if (/digikey\.com/i.test(url)) {
+    // /products/detail/<mfr>/<MPN>/<dkpn>  (also older /product-detail/en/<mfr>/<MPN>/…)
+    const m = url.match(/(?:products\/detail|product-detail\/en)\/([^/]+)\/([^/?#]+)/i);
+    if (m && !$('piName').value) {
+      const mfr = decodeURIComponent(m[1]).replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      const mpn = decodeURIComponent(m[2]);
+      $('piName').value = `${mpn} (${mfr})`;
+    }
+    if (!$('piVendor').value || /digikey/i.test($('piVendor').value)) $('piVendor').value = 'DigiKey';
+    status('DigiKey blocks robots — part number filled from the link; copy the price from their page.');
+    return;
+  }
+
   status('Fetching product page…');
   try {
     let info = null;
     const html = await proxyFetchText(url);
-    if (html && html.length > 500) {
+    if (html && html.length > 500 && !isBotWall(html)) {
       info = {};
       const tm = html.match(/<meta[^>]*(?:og:title|twitter:title)[^>]*content=["']([^"']+)/i) || html.match(/<title[^>]*>([^<]+)</i);
-      if (tm) info.title = decodeEntities(tm[1]).replace(/\s*[|–-]\s*(Amazon|McMaster|DigiKey|eBay).*$/i, '').trim().slice(0, 100);
+      if (tm) {
+        const t = decodeEntities(tm[1]).replace(/\s*[|–-]\s*(Amazon|McMaster|DigiKey|Mouser|eBay|Newark).*$/i, '').trim().slice(0, 100);
+        if (!isJunkTitle(t)) info.title = t;
+      }
       const pm = html.match(/og:price:amount["'][^>]*content=["']([\d.,]+)/i) ||
                  html.match(/"price"\s*:\s*"?\$?([\d,]+\.?\d{0,2})"?/i) ||
                  html.match(/\$\s?([\d,]+\.\d{2})/);
@@ -1055,6 +1081,7 @@ async function autofillFromLink() {
     if (!info || (!info.title && !info.price)) {
       info = await relayLookup('product', url, status);
     }
+    if (info && isJunkTitle(info.title)) info.title = null;   // drop bot-wall titles from the relay too
     if (info.title && !$('piName').value) $('piName').value = info.title;
     if (info.price != null && !$('piCost').value) $('piCost').value = info.price;
     const qm = ($('piName').value || '').match(/(?:pack|box|bag|set) of (\d+)|(\d+)\s?[- ]?(?:pack|pcs|pieces|count|ct)\b/i);

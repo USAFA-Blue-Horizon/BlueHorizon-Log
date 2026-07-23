@@ -1,5 +1,5 @@
 /* BlueHorizon — service worker: cache the app shell, network-first for data. */
-const CACHE = 'bh-log-v11';
+const CACHE = 'bh-log-v12';
 const SHELL = ['./portal.html', './app.css', './app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
 
