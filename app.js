@@ -1103,18 +1103,107 @@ async function savePoItem() {
 
 /* ----- PO Excel export (mirrors the team's purchasing-office format) ----- */
 
+/* ----- vendor credential lookup (private; fetched only at export) ----- */
+
+const vnorm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1]
+        : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+/* Fuzzy-match a typed vendor to a stored credential key: exact-normalized,
+   then prefix/contains, then small edit distance. Handles "OSH Park" vs
+   "OSHPark", "McMaster Car" vs "McMaster Carr", "digi-key" vs "DigiKey", etc. */
+function matchVendorCred(vendor, creds) {
+  const key = vnorm(vendor);
+  if (!key) return null;
+  let exact = creds.find((c) => c.vkey === key);
+  if (exact) return exact;
+  // prefix either direction (>=4 chars) — pick the closest length
+  const pref = creds
+    .filter((c) => c.vkey.length >= 4 && key.length >= 4 && (c.vkey.startsWith(key) || key.startsWith(c.vkey)))
+    .sort((a, b) => Math.abs(a.vkey.length - key.length) - Math.abs(b.vkey.length - key.length));
+  if (pref.length) return pref[0];
+  // small typo tolerance
+  let best = null, bestD = Infinity;
+  for (const c of creds) {
+    const d = levenshtein(key, c.vkey);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  const tol = Math.max(2, Math.floor(key.length * 0.25));
+  return bestD <= tol ? best : null;
+}
+
+/* Parse a "Site,Username,Password" CSV (tolerant of quotes/commas in fields). */
+function parseVendorCsv(text) {
+  const lines = text.replace(/\r/g, '').split('\n').filter((l) => l.trim());
+  if (!lines.length) return [];
+  const splitCsv = (line) => {
+    const out = []; let cur = ''; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) { if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  };
+  const header = splitCsv(lines[0]).map((h) => h.trim().toLowerCase());
+  const si = header.findIndex((h) => /site|vendor|name/.test(h));
+  const ui = header.findIndex((h) => /user|email|login/.test(h));
+  const pi = header.findIndex((h) => /pass/.test(h));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const c = splitCsv(lines[i]);
+    const name = (c[si >= 0 ? si : 0] || '').trim();
+    if (!name) continue;
+    rows.push({ name, email: (c[ui] || '').trim(), password: (c[pi] || '').trim() });
+  }
+  return rows;
+}
+
+async function fetchVendorCreds() {
+  if (!cfg.signedIn) return [];
+  try {
+    const r = await fetch(`${cfg.portal}/api/vendor-creds`,
+      { headers: { Authorization: `Bearer ${cfg.session}` } });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch { return []; }
+}
+
 async function exportPoXlsx() {
   const po = currentPob();
   if (!po || !po.items.length) { toast('Add items first', true); return; }
   try {
     const XLSX = await loadXLSX();
+    const creds = await fetchVendorCreds();   // private, fetched fresh at export — never stored in the repo
     const header = ['889?', 'Part Name', 'Team/Project', 'Justification', 'Vendor', 'Unit Cost',
-      'Quantity', 'Q. Descriptor', 'Shipping', 'Total Cost', 'Delivery/Pickup', 'Link', 'Requested By', 'Notes'];
+      'Quantity', 'Q. Descriptor', 'Shipping', 'Total Cost', 'Delivery/Pickup', 'Link',
+      'Account Email', 'Account Password', 'Requested By', 'Notes'];
     const rows = [header];
     const vendors = [...new Set(po.items.map((i) => i.vendor))];
+    const unmatched = [];
     let grand = 0;
     vendors.forEach((v) => {
-      rows.push(['', v, '', '', '', '', '', '', '', '', '', '', '', '']); // vendor section header
+      const cred = matchVendorCred(v, creds);
+      if (!cred) unmatched.push(v);
+      const email = cred ? (cred.email || '') : '';
+      const pass = cred ? (cred.password || '') : '';
+      rows.push(['', v, '', '', '', '', '', '', '', '', '', '', email, pass, '', '']); // vendor section header w/ login
       const vinfo = po.vendors[v] || {};
       const s889 = vinfo.s889 ? (vinfo.s889.status === 'COMPLIANT' ? 'Yes' : (/NON/.test(vinfo.s889.status) ? 'NO' : '?')) : '';
       const ship = parseFloat(vinfo.shipping) || 0;
@@ -1123,19 +1212,23 @@ async function exportPoXlsx() {
         grand += line;
         rows.push([s889, i.name, projName(i.team || ''), i.justification || '', v,
           i.unitCost, i.qty, i.qtyDesc || '', idx === 0 ? ship : '', line,
-          i.delivery || 'Delivery', i.url || '', i.addedBy || '', i.notes || '']);
+          i.delivery || 'Delivery', i.url || '',
+          idx === 0 ? email : '', idx === 0 ? pass : '', i.addedBy || '', i.notes || '']);
       });
       grand += ship;
     });
     rows.push([]);
-    rows.push(['', '', '', '', '', '', '', '', 'GRAND TOTAL', grand, '', '', '', '']);
+    rows.push(['', '', '', '', '', '', '', '', 'GRAND TOTAL', grand, '', '', '', '', '', '']);
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 5 }, { wch: 34 }, { wch: 18 }, { wch: 34 }, { wch: 14 }, { wch: 9 },
-      { wch: 8 }, { wch: 16 }, { wch: 9 }, { wch: 10 }, { wch: 13 }, { wch: 40 }, { wch: 14 }, { wch: 18 }];
+      { wch: 8 }, { wch: 16 }, { wch: 9 }, { wch: 10 }, { wch: 13 }, { wch: 40 },
+      { wch: 32 }, { wch: 20 }, { wch: 14 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, po.name.slice(0, 30).replace(/[\\/?*[\]:]/g, ' '));
     XLSX.writeFile(wb, `${po.name.replace(/[^\w.-]+/g, '_')}.xlsx`);
-    toast('Excel exported ✓');
+    if (!creds.length) toast('Exported ✓ (sign in as a member to include vendor logins)', true);
+    else if (unmatched.length) toast(`Exported ✓ — no saved login for: ${unmatched.join(', ')}`);
+    else toast('Excel exported with vendor logins ✓');
   } catch (e) { toast(e.message, true); }
 }
 
@@ -2213,6 +2306,32 @@ function wire() {
   $('moreJournal').onclick = () => { $('moreSheet').classList.add('hidden'); state.composeType = 'journal'; openCompose(); };
   $('moreOnboard').onclick = () => { $('moreSheet').classList.add('hidden'); openOnboarding(); };
   $('moreEngineLab').onclick = () => { $('moreSheet').classList.add('hidden'); window.open('engine-lab.html', '_blank', 'noopener'); };
+
+  // vendor login import (admin/lead) — CSV columns: Site, Username, Password
+  $('moreVendorCreds').onclick = () => {
+    $('moreSheet').classList.add('hidden');
+    if (!cfg.signedIn || !['admin', 'lead'].includes(cfg.role)) { toast('Leads and admins only', true); return; }
+    $('vendorCredsInput').click();
+  };
+  $('vendorCredsInput').onchange = async (ev) => {
+    const f = ev.target.files[0];
+    ev.target.value = '';
+    if (!f) return;
+    try {
+      const text = await f.text();
+      const rows = parseVendorCsv(text);
+      if (!rows.length) { toast('No vendor rows found in that CSV', true); return; }
+      toast(`Uploading ${rows.length} vendor logins…`);
+      const r = await fetch(`${cfg.portal}/api/vendor-creds/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.session}` },
+        body: JSON.stringify({ rows }),
+      });
+      const j = await r.json();
+      if (!r.ok) { toast(j.error || 'Import failed', true); return; }
+      toast(`✓ ${j.imported} vendor logins stored privately — they’ll auto-fill on PO export`);
+    } catch (e) { toast(e.message, true); }
+  };
 
   // auth
   $('authSubmit').onclick = submitAuth;
