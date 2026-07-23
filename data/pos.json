@@ -5,8 +5,27 @@
     "name": "Order 2026-07-23",
     "created": "2026-07-23T21:15:03.350Z",
     "by": "Grant Stec",
-    "items": [],
-    "vendors": {}
+    "items": [
+      {
+        "id": "mry0hvo0rwel",
+        "addedBy": "Grant Stec",
+        "addedRid": "grant-stec",
+        "added": "2026-07-23T21:16:57.360Z",
+        "name": "Flight Computer PCB",
+        "vendor": "OSH Park",
+        "url": "https://oshpark.com/orders/HzFoj8h2",
+        "unitCost": 283.5,
+        "qty": 1,
+        "team": "flight-computer",
+        "justification": "Flight Computer",
+        "delivery": "Delivery"
+      }
+    ],
+    "vendors": {
+      "OSH Park": {
+        "shipping": 0
+      }
+    }
   },
   {
     "id": "mrbbbgf9wu8w",
