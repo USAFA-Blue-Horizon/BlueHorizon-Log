@@ -19,6 +19,8 @@ jobs:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           ROSTER_EMAILS: ${{ secrets.ROSTER_EMAILS }}
+          PORTAL_URL: ${{ vars.PORTAL_URL || 'https://bluehorizon-portal.stecgrant89.workers.dev' }}
+          ACTION_KEY: ${{ secrets.ACTION_KEY }}
           SMTP_SERVER: ${{ vars.SMTP_SERVER || 'smtp.gmail.com' }}
-          APP_URL: ${{ vars.APP_URL || 'https://grantstec.github.io/BlueHorizon-Log/' }}
-        run: python scripts/send_reminders.py
+          APP_URL: ${{ vars.APP_URL || 'https://bluehorizon.club/portal.html' }}
+        run: pip install requests && python scripts/send_reminders.py
