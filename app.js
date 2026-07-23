@@ -27,13 +27,17 @@ const DEFAULT_PROJECTS = [
   { id: 'team',            name: 'Team / General' },
 ];
 
+/* Club defaults — new devices work out of the box; Settings can still override. */
+const DEFAULT_REPO = 'grantstec/BlueHorizon-Log';
+const DEFAULT_PORTAL = 'https://bluehorizon-portal.stecgrant89.workers.dev';
+
 const cfg = {
   get name()    { return localStorage.getItem('bh_name')    || ''; },
   get rid()     { return localStorage.getItem('bh_rid')     || ''; },
-  get repo()    { return localStorage.getItem('bh_repo')    || ''; },
+  get repo()    { return localStorage.getItem('bh_repo')    || DEFAULT_REPO; },
   get branch()  { return localStorage.getItem('bh_branch')  || 'main'; },
   get token()   { return localStorage.getItem('bh_token')   || ''; },
-  get portal()  { return (localStorage.getItem('bh_portal') || '').replace(/\/+$/, ''); },
+  get portal()  { return (localStorage.getItem('bh_portal') ?? DEFAULT_PORTAL).replace(/\/+$/, ''); },
   get session() { return localStorage.getItem('bh_session') || ''; },
   get role()    { return localStorage.getItem('bh_role')    || ''; },
   set(k, v)     { localStorage.setItem('bh_' + k, String(v).trim()); },
