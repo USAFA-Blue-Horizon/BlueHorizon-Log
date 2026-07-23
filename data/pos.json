@@ -23,7 +23,13 @@
     ],
     "vendors": {
       "OSH Park": {
-        "shipping": 0
+        "shipping": 0,
+        "s889": {
+          "status": "COMPLIANT",
+          "legalName": "OSH PARK LLC",
+          "by": "Grant Stec",
+          "date": "2026-07-23T21:43:29.670Z"
+        }
       }
     }
   },
