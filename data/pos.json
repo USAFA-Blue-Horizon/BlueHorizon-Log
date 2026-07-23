@@ -103,6 +103,20 @@
         "team": "flight-computer",
         "justification": "PCB Soldering",
         "delivery": "Delivery"
+      },
+      {
+        "id": "mry1uak0jiss",
+        "addedBy": "Grant Stec",
+        "addedRid": "grant-stec",
+        "added": "2026-07-23T21:54:36.144Z",
+        "name": "Solder Wick - 0.8mm wide and 1.5m / 5 feet long",
+        "vendor": "Adafruit",
+        "url": "https://www.adafruit.com/product/4456",
+        "unitCost": 2.95,
+        "qty": 3,
+        "team": "flight-computer",
+        "justification": "Soldering PCBs",
+        "delivery": "Delivery"
       }
     ],
     "vendors": {
