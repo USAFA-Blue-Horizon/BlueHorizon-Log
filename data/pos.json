@@ -19,6 +19,20 @@
         "team": "flight-computer",
         "justification": "Flight Computer",
         "delivery": "Delivery"
+      },
+      {
+        "id": "mry1hi1ye3se",
+        "addedBy": "Grant Stec",
+        "addedRid": "grant-stec",
+        "added": "2026-07-23T21:44:39.334Z",
+        "name": "Flight Computer Stencils",
+        "vendor": "Digital Era, LLC",
+        "url": "https://www.oshstencils.com/#",
+        "unitCost": 119.96,
+        "qty": 1,
+        "team": "flight-computer",
+        "justification": "SMD for PCBs",
+        "delivery": "Delivery"
       }
     ],
     "vendors": {
@@ -30,6 +44,9 @@
           "by": "Grant Stec",
           "date": "2026-07-23T21:43:29.670Z"
         }
+      },
+      "Digital Era, LLC": {
+        "shipping": 0
       }
     }
   },
