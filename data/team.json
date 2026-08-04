@@ -1,4 +1,10 @@
 {
-  "goals": [],
+  "goals": [
+    {
+      "id": "msetf5auxsj4",
+      "text": "Rocket launch & site secured between December 1-4",
+      "done": false
+    }
+  ],
   "tasks": []
 }
