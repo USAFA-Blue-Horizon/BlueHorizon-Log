@@ -1,5 +1,5 @@
 /* BlueHorizon — service worker: cache the app shell, network-first for data. */
-const CACHE = 'bh-log-v12';
+const CACHE = 'bh-log-v13';
 const SHELL = ['./portal.html', './app.css', './app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
 
@@ -17,7 +17,6 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Never cache API traffic — GitHub, the portal Worker, or media.
   if (url.hostname.endsWith('github.com') || url.hostname.endsWith('githubusercontent.com')
     || url.hostname.endsWith('workers.dev') || url.pathname.includes('/media/')) return;
   if (e.request.method !== 'GET') return;
