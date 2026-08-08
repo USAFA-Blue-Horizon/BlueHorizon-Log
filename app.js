@@ -55,6 +55,9 @@ const state = {
   team: { goals: [], tasks: [] },
   pos: [],
   resources: [],
+  tests: [],
+  openTest: null,
+  calMonth: new Date(),
   obStep: 0,
   invited: false,
   pendingResource: null,
@@ -211,13 +214,14 @@ async function loadAll(showSpinner = true) {
   const btn = $('btnSync');
   if (showSpinner) btn.classList.add('spin');
   try {
-    const [projects, entries, roster, team, pos, resources] = await Promise.all([
+    const [projects, entries, roster, team, pos, resources, tests] = await Promise.all([
       api.readJson('data/projects.json', DEFAULT_PROJECTS),
       api.readJson('data/index.json', []),
       api.readJson('data/roster.json', []),
       api.readJson('data/team.json', { goals: [], tasks: [] }),
       api.readJson('data/pos.json', []),
       api.readJson('data/resources.json', []),
+      api.readJson('data/tests.json', []),
     ]);
     state.projects = projects;
     state.entries = entries;
@@ -225,6 +229,7 @@ async function loadAll(showSpinner = true) {
     state.team = { goals: team.goals || [], tasks: team.tasks || [] };
     state.pos = pos;
     state.resources = resources;
+    state.tests = tests;
     render();
     maybeAskWho();
   } catch (e) {
@@ -278,8 +283,22 @@ function render() {
   renderMeetings();
   renderPos();
   renderRoster();
+  renderTests();
+  renderCalendar();
+  applyDensity('feedList'); applyDensity('poList');
   if (state.openProject) renderProjectDetail();
   if (state.openPo) renderPoDetail();
+  if (state.openTest) renderTest();
+}
+
+function applyDensity(listId) {
+  const el = $(listId);
+  if (!el) return;
+  const d = localStorage.getItem('bh_density_' + listId) || 'list';
+  el.classList.remove('grid2', 'grid3');
+  if (d !== 'list') el.classList.add(d);
+  const sw = document.querySelector('.view-switch[data-target="' + listId + '"]');
+  if (sw) sw.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.density === d));
 }
 
 function projName(id) {
@@ -299,8 +318,8 @@ function renderFilters(el, active, onPick) {
     el.appendChild(b);
   };
   mk('all', 'All');
-  mk('journal', 'Journals');
   mk('meeting', 'Meetings');
+  if (state.entries.some((e) => e.type === 'journal')) mk('journal', 'Journals');
   state.projects.forEach((p) => mk(p.id, p.name));
 }
 
@@ -357,6 +376,12 @@ function renderHome() {
 
 function byDue(a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; }
 function today() { return new Date().toISOString().slice(0, 10); }
+function updateDue(t) {
+  if (!t || t.status === 'done' || !t.updateFreq || t.updateFreq === 'none') return false;
+  const days = { daily: 1, weekly: 7, monthly: 30 }[t.updateFreq] || 9999;
+  const last = t.lastUpdate || t.created || 0;
+  return (Date.now() - new Date(last).getTime()) >= days * 86400000;
+}
 function dueClass(due) {
   if (!due) return '';
   if (due < today()) return 'overdue';
@@ -380,6 +405,7 @@ function taskRow(t) {
       <div class="t-meta">
         ${t.due ? `<span class="t-due ${dueClass(t.due)}">${fmtDue(t.due)}</span>` : ''}
         ${t.project ? `<span class="badge">${esc(projName(t.project))}</span>` : ''}
+        ${t.updateFreq && t.updateFreq !== 'none' ? `<span class="badge${updateDue(t) ? '' : ' journal'}">↻ ${esc(t.updateFreq)}${updateDue(t) ? ' — update due' : ''}</span>` : ''}
         ${who ? `<span>${esc(who)}</span>` : '<span>unassigned</span>'}
       </div>
     </div>`;
@@ -603,8 +629,44 @@ function openTaskSheet(id = null) {
     chip.onclick = () => chip.classList.toggle('on');
     ag.appendChild(chip);
   });
+  const freq = t ? (t.updateFreq || 'none') : 'none';
+  document.querySelectorAll('#taskFreqSeg .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.freq === freq));
+  renderTaskUpdates(t);
+  $('taskUpdateText').value = '';
   $('taskDelete').classList.toggle('hidden', !t);
   $('taskSheet').classList.remove('hidden');
+}
+
+function renderTaskUpdates(t) {
+  const wrap = $('taskUpdatesWrap');
+  wrap.classList.toggle('hidden', !t);
+  if (!t) return;
+  const list = $('taskUpdatesList');
+  list.innerHTML = '';
+  const ups = t.updates || [];
+  if (!ups.length) list.innerHTML = '<p class="settings-note">No updates yet.</p>';
+  ups.slice().reverse().forEach((u) => {
+    const d = document.createElement('div');
+    d.className = 'card'; d.style.cursor = 'default';
+    d.innerHTML = '<div class="card-meta"><span>' + esc(u.by || '?') + '</span><span>·</span><span>' +
+      new Date(u.date).toLocaleDateString() + '</span></div><div class="card-body">' + esc(u.text) + '</div>';
+    list.appendChild(d);
+  });
+}
+
+async function postTaskUpdate() {
+  const t = state.team.tasks.find((x) => x.id === state.editingTaskId);
+  if (!t) { toast('Save the task first', true); return; }
+  if (!requireToken()) return;
+  const text = $('taskUpdateText').value.trim();
+  if (!text) { toast('Write an update first', true); return; }
+  t.updates = t.updates || [];
+  t.updates.push({ by: cfg.name || 'Unknown', rid: cfg.rid, date: new Date().toISOString(), text });
+  t.lastUpdate = new Date().toISOString();
+  $('taskUpdateText').value = '';
+  renderTaskUpdates(t);
+  render();
+  try { await saveTeam('task update: ' + t.title.slice(0, 40)); toast('Update posted ✓'); } catch (e) { toast(e.message, true); }
 }
 
 async function saveTask() {
@@ -617,6 +679,7 @@ async function saveTask() {
     notes: $('taskNotes').value.trim(),
     project: $('taskProject').value || undefined,
     due: $('taskDue').value || undefined,
+    updateFreq: (document.querySelector('#taskFreqSeg .seg-btn.active') || {}).dataset?.freq || 'none',
     assignees,
   };
   if (state.editingTaskId) {
@@ -1822,8 +1885,7 @@ function setComposeType(type) {
   document.querySelectorAll('#entryTypeSeg .seg-btn')
     .forEach((b) => b.classList.toggle('active', b.dataset.type === type));
   $('composeBody').placeholder =
-    type === 'journal' ? 'What did you work on this week? Wins, blockers, what the next person should know…'
-    : type === 'meeting' ? 'Attendees, decisions made, action items…\n\nTip: paste a transcript here, or attach a .txt/.vtt file. Record with your phone’s voice memo transcription or upload the video to YouTube (unlisted) for free auto-captions.'
+    type === 'meeting' ? 'Attendees, decisions made, action items…\n\nTip: paste a transcript here, or attach a .txt/.vtt file. Record with your phone’s voice memo transcription or upload the video to YouTube (unlisted) for free auto-captions.'
     : 'What did you do? What worked, what didn’t, what’s next?\n\nTwo sentences beats zero.';
   $('composeTitle').placeholder =
     type === 'meeting' ? `Meeting ${today()}` : 'Title (optional — e.g. ‘Igniter test #3’)';
@@ -2149,7 +2211,192 @@ async function testConnection() {
 
 /* ----- navigation & helpers ----- */
 
-const VIEWS = ['home', 'feed', 'photos', 'projects', 'project', 'meetings', 'pos', 'po', 'pob', 'roster', 'resources'];
+
+/* ===================== Testing procedures module ===================== */
+const OUTCOMES = ['', 'pass', 'partial', 'fail'];
+const OUTCOME_GLYPH = { '': '\u00b7', pass: '+', partial: '~', fail: '\u2013' };
+function saveTests(message) { return api.updateJson('data/tests.json', () => state.tests, message); }
+function currentTest() { return state.tests.find((x) => x.id === state.openTest); }
+
+function renderTests() {
+  const list = $('testList'); if (!list) return;
+  list.innerHTML = '';
+  $('testsEmpty').classList.toggle('hidden', state.tests.length > 0);
+  state.tests.forEach((t) => {
+    const items = (t.sections || []).flatMap((s) => s.items || []);
+    const pass = items.filter((i) => i.outcome === 'pass').length;
+    const div = document.createElement('div');
+    div.className = 'project-card';
+    div.innerHTML = '<div><div class="project-name">' + esc(t.name) + '</div><div class="project-count">' +
+      esc(t.engine || '') + (t.date ? ' \u00b7 ' + t.date : '') + ' \u00b7 ' + esc(t.by || '') + '</div></div>' +
+      '<span class="project-count">' + pass + '/' + items.length + ' passed \u203a</span>';
+    div.onclick = () => { state.openTest = t.id; switchView('test'); renderTest(); };
+    list.appendChild(div);
+  });
+}
+
+async function newTest() {
+  if (!requireToken()) return;
+  const name = prompt('Name this test checklist (e.g. "Pintle 4 - 4-10-26"):');
+  if (!name || !name.trim()) return;
+  const engine = prompt('Engine / variant (optional):', '') || '';
+  const t = { id: uid(), name: name.trim(), engine: engine.trim(), date: today(), by: cfg.name || 'Unknown',
+    created: new Date().toISOString(), sections: [{ id: uid(), title: 'Objectives', items: [] }] };
+  state.tests.unshift(t); state.openTest = t.id;
+  switchView('test'); renderTest();
+  try { await saveTests('test: new ' + t.name); } catch (e) { toast(e.message, true); }
+}
+
+function renderTest() {
+  const t = currentTest(); if (!t) { switchView('tests'); return; }
+  $('testTitle').textContent = t.name;
+  $('testMeta').innerHTML = '<div class="detail-meta">' + esc(t.engine || '') + (t.date ? ' \u00b7 ' + t.date : '') + ' \u00b7 by ' + esc(t.by || '?') + '</div>';
+  const items = (t.sections || []).flatMap((s) => s.items || []);
+  const pass = items.filter((i) => i.outcome === 'pass').length;
+  $('testProgressBar').style.width = items.length ? ((pass / items.length) * 100) + '%' : '0';
+  const body = $('testBody'); body.innerHTML = '';
+  (t.sections || []).forEach((sec) => {
+    const box = document.createElement('div'); box.className = 'test-section';
+    const h = document.createElement('h3');
+    h.innerHTML = '<span class="sec-title" style="flex:1;cursor:text">' + esc(sec.title) +
+      '</span><button class="mini-btn add">+ item</button> <button class="text-btn danger delsec">\u2715</button>';
+    h.querySelector('.sec-title').onclick = () => editSecTitle(sec);
+    h.querySelector('.add').onclick = () => addTestItem(sec);
+    h.querySelector('.delsec').onclick = () => delTestSection(sec);
+    box.appendChild(h);
+    (sec.items || []).forEach((it) => box.appendChild(testItemRow(sec, it)));
+    body.appendChild(box);
+  });
+}
+
+function testItemRow(sec, it) {
+  const row = document.createElement('div'); row.className = 'test-item';
+  const oc = it.outcome || '';
+  row.innerHTML = '<div class="oc ' + oc + '">' + OUTCOME_GLYPH[oc] + '</div><div class="ti-main">' +
+    '<div class="ti-text">' + esc(it.text || '(tap to edit)') + '</div>' +
+    '<div class="ti-note">' + (it.note ? esc(it.note) : '+ note') + '</div></div><button class="ti-x">\u2715</button>';
+  row.querySelector('.oc').onclick = () => cycleOutcome(it);
+  row.querySelector('.ti-text').onclick = () => editItemText(it);
+  row.querySelector('.ti-note').onclick = () => editItemNote(it);
+  row.querySelector('.ti-x').onclick = () => { sec.items = sec.items.filter((x) => x !== it); renderTest(); persistTests(); };
+  return row;
+}
+
+let _testSaveTimer = null;
+function persistTests() { clearTimeout(_testSaveTimer); _testSaveTimer = setTimeout(() => { saveTests('test: edit').catch((e) => toast(e.message, true)); }, 800); }
+function cycleOutcome(it) { if (!requireToken()) return; it.outcome = OUTCOMES[(OUTCOMES.indexOf(it.outcome || '') + 1) % OUTCOMES.length]; renderTest(); persistTests(); }
+function editItemText(it) { if (!requireToken()) return; const v = prompt('Objective:', it.text || ''); if (v === null) return; it.text = v.trim(); renderTest(); persistTests(); }
+function editItemNote(it) { if (!requireToken()) return; const v = prompt('Note (blank to clear):', it.note || ''); if (v === null) return; it.note = v.trim() || undefined; renderTest(); persistTests(); }
+function editSecTitle(sec) { if (!requireToken()) return; const v = prompt('Section title:', sec.title || ''); if (v === null) return; sec.title = v.trim() || 'Section'; renderTest(); persistTests(); }
+function addTestItem(sec) { if (!requireToken()) return; const v = prompt('New objective:'); if (v === null || !v.trim()) return; sec.items = sec.items || []; sec.items.push({ id: uid(), text: v.trim(), outcome: '' }); renderTest(); persistTests(); }
+function addTestSection() { const t = currentTest(); if (!t || !requireToken()) return; const v = prompt('Section title:', 'Section'); if (v === null) return; t.sections = t.sections || []; t.sections.push({ id: uid(), title: v.trim() || 'Section', items: [] }); renderTest(); persistTests(); }
+function delTestSection(sec) { const t = currentTest(); if (!t) return; if (!confirm('Delete section "' + sec.title + '" and its items?')) return; t.sections = t.sections.filter((s) => s !== sec); renderTest(); persistTests(); }
+async function renameTest() { const t = currentTest(); if (!t || !requireToken()) return; const v = prompt('Rename test:', t.name); if (!v || !v.trim()) return; t.name = v.trim(); renderTest(); renderTests(); try { await saveTests('test: rename'); } catch (e) { toast(e.message, true); } }
+async function deleteTest() { const t = currentTest(); if (!t || !requireToken()) return; if (!confirm('Delete "' + t.name + '"?')) return; state.tests = state.tests.filter((x) => x.id !== t.id); switchView('tests'); renderTests(); try { await saveTests('test: delete'); } catch (e) { toast(e.message, true); } }
+
+async function exportTestXlsx() {
+  const t = currentTest(); if (!t) return;
+  try {
+    const XLSX = await loadXLSX();
+    const rows = [[t.name], ['Engine', t.engine || ''], ['Date', t.date || ''], [], ['Objective', 'Outcome', 'Note']];
+    (t.sections || []).forEach((sec) => {
+      rows.push([sec.title, '', '']);
+      (sec.items || []).forEach((i) => rows.push(['  ' + (i.text || ''), { '': '', pass: '+', partial: '~', fail: '-' }[i.outcome || ''], i.note || '']));
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 60 }, { wch: 9 }, { wch: 40 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, t.name.slice(0, 30).replace(/[\\/?*[\]:]/g, ' '));
+    XLSX.writeFile(wb, t.name.replace(/[^\w.-]+/g, '_') + '.xlsx');
+    toast('Test exported \u2713');
+  } catch (e) { toast(e.message, true); }
+}
+
+async function importTestXlsx(file) {
+  if (!requireToken()) return;
+  try {
+    const XLSX = await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    let imported = 0;
+    for (const sheetName of wb.SheetNames) {
+      if (/^summary$/i.test(sheetName)) continue;
+      const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+      const test = { id: uid(), name: sheetName, engine: '', date: '', by: cfg.name || 'Import', created: new Date().toISOString(), sections: [] };
+      let cur = null;
+      for (const row of grid) {
+        const cells = row.map((c) => String(c == null ? '' : c).trim());
+        for (let i = 1; i < cells.length; i++) if (/^engine$/i.test(cells[i - 1]) && cells[i]) test.engine = cells[i];
+        const dM = cells.find((c) => /^\d{4}-\d{2}-\d{2}/.test(c));
+        if (dM && !test.date) test.date = dM.slice(0, 10);
+        const obj = cells.find((c) => /^\(\d+(\.\d+)?\)/.test(c));
+        if (!obj) continue;
+        const outcome = cells.includes('+') ? 'pass' : cells.includes('~') ? 'partial' : cells.includes('-') ? 'fail' : '';
+        const isSection = /^\(\d+\)/.test(obj) && !/^\(\d+\./.test(obj);
+        if (isSection) { cur = { id: uid(), title: obj, items: [] }; test.sections.push(cur); }
+        else {
+          if (!cur) { cur = { id: uid(), title: 'Objectives', items: [] }; test.sections.push(cur); }
+          cur.items.push({ id: uid(), text: obj, outcome });
+        }
+      }
+      if (test.sections.some((s) => s.items.length)) { state.tests.unshift(test); imported++; }
+    }
+    if (!imported) { toast('No recognizable test sheets found', true); return; }
+    renderTests();
+    await saveTests('test: import ' + imported + ' sheet(s)');
+    toast('Imported ' + imported + ' test checklist(s) \u2713');
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ===================== Calendar ===================== */
+function calEvents() {
+  const evs = [];
+  state.team.tasks.forEach((t) => { if (t.due) evs.push({ date: t.due, kind: 'task', label: t.title, overdue: t.status !== 'done' && t.due < today(), onclick: () => { switchView('home'); openTaskSheet(t.id); } }); });
+  (state.team.goals || []).forEach((g) => { if (g.due) evs.push({ date: g.due, kind: 'goal', label: g.text, onclick: () => switchView('home') }); });
+  return evs;
+}
+
+function renderCalendar() {
+  const grid = $('calGrid'); if (!grid) return;
+  const m = state.calMonth, year = m.getFullYear(), month = m.getMonth();
+  $('calMonthLabel').textContent = m.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const startDow = new Date(year, month, 1).getDay();
+  const daysIn = new Date(year, month + 1, 0).getDate();
+  const evs = calEvents(), todayStr = today();
+  grid.innerHTML = '';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach((d) => { const el = document.createElement('div'); el.className = 'cal-dow'; el.textContent = d; grid.appendChild(el); });
+  for (let i = 0; i < startDow; i++) { const e = document.createElement('div'); e.className = 'cal-cell empty'; grid.appendChild(e); }
+  for (let day = 1; day <= daysIn; day++) {
+    const ds = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (ds === todayStr ? ' today' : '');
+    cell.innerHTML = '<div class="cal-daynum">' + day + '</div>';
+    evs.filter((e) => e.date === ds).forEach((e) => {
+      const ev = document.createElement('div');
+      ev.className = 'cal-ev ' + e.kind + (e.overdue ? ' overdue' : '');
+      ev.textContent = (e.kind === 'goal' ? '\u2605 ' : '') + e.label;
+      ev.title = e.label; ev.onclick = e.onclick;
+      cell.appendChild(ev);
+    });
+    grid.appendChild(cell);
+  }
+}
+
+async function exportCalendarXlsx() {
+  try {
+    const XLSX = await loadXLSX();
+    const evs = calEvents().slice().sort((a, b) => a.date < b.date ? -1 : 1);
+    const rows = [['Date', 'Type', 'Item', 'Status']];
+    evs.forEach((e) => rows.push([e.date, e.kind === 'goal' ? 'Goal' : 'Task', e.label, e.overdue ? 'OVERDUE' : '']));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 50 }, { wch: 10 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Calendar');
+    XLSX.writeFile(wb, 'BlueHorizon_Calendar.xlsx');
+    toast('Calendar exported \u2713');
+  } catch (e) { toast(e.message, true); }
+}
+
+const VIEWS = ['home', 'feed', 'photos', 'projects', 'project', 'meetings', 'pos', 'po', 'pob', 'roster', 'resources', 'calendar', 'tests', 'test'];
 
 function switchView(v) {
   state.view = v;
@@ -2157,7 +2404,7 @@ function switchView(v) {
   document.querySelectorAll('.tabbar .tab[data-view]').forEach((t) => {
     t.classList.toggle('active', t.dataset.view === v || (t.dataset.view === 'pos' && (v === 'po' || v === 'pob')));
   });
-  $('tabMore').classList.toggle('active', ['photos', 'projects', 'project', 'meetings', 'roster', 'resources'].includes(v));
+  $('tabMore').classList.toggle('active', ['photos', 'projects', 'project', 'meetings', 'roster', 'resources', 'calendar', 'tests', 'test'].includes(v));
   window.scrollTo(0, 0);
 }
 
@@ -2330,7 +2577,6 @@ function wire() {
   document.querySelectorAll('.more-item[data-goto]').forEach((b) => {
     b.onclick = () => { $('moreSheet').classList.add('hidden'); switchView(b.dataset.goto); };
   });
-  $('moreJournal').onclick = () => { $('moreSheet').classList.add('hidden'); state.composeType = 'journal'; openCompose(); };
   $('moreOnboard').onclick = () => { $('moreSheet').classList.add('hidden'); openOnboarding(); };
   $('moreEngineLab').onclick = () => { $('moreSheet').classList.add('hidden'); window.open('engine-lab.html', '_blank', 'noopener'); };
 
@@ -2506,6 +2752,24 @@ function wire() {
   $('taskCancel').onclick = () => $('taskSheet').classList.add('hidden');
   $('taskSave').onclick = saveTask;
   $('taskDelete').onclick = deleteTask;
+  document.querySelectorAll('#taskFreqSeg .seg-btn').forEach((b) => {
+    b.onclick = () => { document.querySelectorAll('#taskFreqSeg .seg-btn').forEach((x) => x.classList.remove('active')); b.classList.add('active'); };
+  });
+  $('taskUpdatePost').onclick = postTaskUpdate;
+  $('btnNewTest').onclick = newTest;
+  $('testImportInput').onchange = (ev) => { if (ev.target.files[0]) importTestXlsx(ev.target.files[0]); ev.target.value = ''; };
+  $('btnAddTestSection').onclick = addTestSection;
+  $('btnExportTest').onclick = exportTestXlsx;
+  $('btnDeleteTest').onclick = deleteTest;
+  $('testTitle').onclick = renameTest;
+  $('calPrev').onclick = () => { state.calMonth = new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() - 1, 1); renderCalendar(); };
+  $('calNext').onclick = () => { state.calMonth = new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() + 1, 1); renderCalendar(); };
+  $('calExport').onclick = exportCalendarXlsx;
+  document.querySelectorAll('.view-switch').forEach((sw) => {
+    sw.querySelectorAll('button').forEach((b) => {
+      b.onclick = () => { localStorage.setItem('bh_density_' + sw.dataset.target, b.dataset.density); applyDensity(sw.dataset.target); };
+    });
+  });
 
   // PO import + builder
   $('poFileInput').onchange = (ev) => {
