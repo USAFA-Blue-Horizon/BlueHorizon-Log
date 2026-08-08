@@ -1,1 +1,635 @@
-[]
+[
+  {
+    "id": "msjsth5thh1k",
+    "name": "test august1",
+    "by": "Grant Stec",
+    "created": "2026-08-08T03:12:57.378Z",
+    "blocks": [
+      {
+        "id": "msjsth5u4m4b",
+        "type": "fields",
+        "title": "Overview",
+        "rows": [
+          {
+            "id": "msjsth5ujhzm",
+            "label": "Date",
+            "value": "2026-08-08",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5um250",
+            "label": "Engine",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5ukli7",
+            "label": "Test Fire Number",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5ux9bh",
+            "label": "General Test Objective",
+            "value": "",
+            "unit": ""
+          }
+        ]
+      },
+      {
+        "id": "msjsth5uz47y",
+        "type": "checklist",
+        "title": "Specific Test Objectives",
+        "items": [
+          {
+            "id": "msjsth5ugdmn",
+            "text": "(1) Burn Profile",
+            "outcome": "",
+            "note": "",
+            "header": true
+          },
+          {
+            "id": "msjsth5u3lib",
+            "text": "(1.1) Successful ematch ignition",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5utbvp",
+            "text": "(1.2) Successful engine ignition",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5umpv1",
+            "text": "(1.3) O:F ratio of 3.5",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5ug3sx",
+            "text": "(1.4) Reached target thrust level",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5ubdqn",
+            "text": "(1.5) Maintain thrust within tolerance",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uzy4m",
+            "text": "(1.6) Variance/Noise within limit",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5umsfo",
+            "text": "(1.7) No degradation of chamber",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uews6",
+            "text": "(1.8) Ablative liner thickness remaining",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uwa9p",
+            "text": "(1.9) No degradation of nozzle",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5umbt1",
+            "text": "(1.10) Uniform/symmetric burn",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5umlna",
+            "text": "(1.11) No degradation of injector",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5u191u",
+            "text": "(2) Test Stand",
+            "outcome": "",
+            "note": "",
+            "header": true
+          },
+          {
+            "id": "msjsth5una5n",
+            "text": "(2.1) Complete setup within time",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5u26hg",
+            "text": "(2.2) No leaks from hoses/tubes",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uar7m",
+            "text": "(2.3) No extraneous nitrous loss",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5u4c8o",
+            "text": "(2.4) No lift from ratchet straps and stakes",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5umjr4",
+            "text": "(2.5) No damage to thrust deflector",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5u6vpf",
+            "text": "(2.6) No damage to engine mount",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5up867",
+            "text": "(2.7) No damage to cameras",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5ul30n",
+            "text": "(2.8) No damage to tank",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5um9nm",
+            "text": "(3) Ground Support",
+            "outcome": "",
+            "note": "",
+            "header": true
+          },
+          {
+            "id": "msjsth5uwedq",
+            "text": "(3.1) Capture video from tripod camera",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5u4884",
+            "text": "(3.2) Capture video from test stand camera",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uzfu8",
+            "text": "(3.3) Capture thermal image of engine burn",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uv70c",
+            "text": "(3.4) Ground Station: maintain data stream",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5uyk71",
+            "text": "(3.5) Ground Station: no repeated commands",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5urwgs",
+            "text": "(3.6) No damage to wiring",
+            "outcome": "",
+            "note": "",
+            "header": false
+          },
+          {
+            "id": "msjsth5ul1lb",
+            "text": "(3.7) Successfully record all PT / load data",
+            "outcome": "",
+            "note": "",
+            "header": false
+          }
+        ]
+      },
+      {
+        "id": "msjsth5ultrj",
+        "type": "outcome",
+        "title": "Test Outcome",
+        "value": ""
+      },
+      {
+        "id": "msjsth5uffvo",
+        "type": "fields",
+        "title": "Results",
+        "rows": [
+          {
+            "id": "msjsth5uxeed",
+            "label": "Max Thrust",
+            "value": "",
+            "unit": "lbf"
+          },
+          {
+            "id": "msjsth5u4r2w",
+            "label": "Avg Thrust",
+            "value": "",
+            "unit": "lbf"
+          },
+          {
+            "id": "msjsth5uvrz1",
+            "label": "Min Thrust",
+            "value": "",
+            "unit": "lbf"
+          },
+          {
+            "id": "msjsth5u4dnl",
+            "label": "Thrust Variance",
+            "value": "",
+            "unit": "lbf"
+          },
+          {
+            "id": "msjsth5uc902",
+            "label": "Max Chamber Pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5uvua2",
+            "label": "Avg Chamber Pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5uaazw",
+            "label": "Min Chamber Pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5ub0sk",
+            "label": "Chamber Pressure Variance",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5us84i",
+            "label": "Burn Time",
+            "value": "",
+            "unit": "s"
+          },
+          {
+            "id": "msjsth5unppt",
+            "label": "Max Temp Outside Wall",
+            "value": "",
+            "unit": "DegF"
+          },
+          {
+            "id": "msjsth5uutvr",
+            "label": "Max OX pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5uq06s",
+            "label": "Avg OX pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5uzbsp",
+            "label": "Min OX Pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5uz3gj",
+            "label": "Max Fuel Pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5uwr52",
+            "label": "Avg Fuel pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5urmhu",
+            "label": "Min Fuel Pressure",
+            "value": "",
+            "unit": "psi"
+          },
+          {
+            "id": "msjsth5ulix2",
+            "label": "Expansion",
+            "value": "",
+            "unit": ""
+          }
+        ]
+      },
+      {
+        "id": "msjsth5u395p",
+        "type": "text",
+        "title": "Test Summary",
+        "text": ""
+      },
+      {
+        "id": "msjsth5unmec",
+        "type": "list",
+        "title": "Lessons Learned",
+        "items": []
+      },
+      {
+        "id": "msjsth5udxma",
+        "type": "list",
+        "title": "TODO",
+        "items": [],
+        "strike": true
+      },
+      {
+        "id": "msjsth5u34p3",
+        "type": "list",
+        "title": "Notes",
+        "items": []
+      },
+      {
+        "id": "msjsth5uhq7c",
+        "type": "fields",
+        "title": "Engine Details",
+        "rows": [
+          {
+            "id": "msjsth5us0ux",
+            "label": "Injector Type",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5um5d9",
+            "label": "Fuel Anulus ID",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5uvokl",
+            "label": "Fuel Anulus OD",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5uov1l",
+            "label": "OX holes dia",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5ucvt6",
+            "label": "# OX holes",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5u8zig",
+            "label": "Chamber Length",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5uido8",
+            "label": "Chamber dia w/o Ablative Liner",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5ub499",
+            "label": "Chamber L*",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5u1tog",
+            "label": "Ablative Liner Thickness",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5up99z",
+            "label": "Nozzle Half Angle",
+            "value": "",
+            "unit": "deg"
+          },
+          {
+            "id": "msjsth5udqcz",
+            "label": "Throat dia",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5u73r7",
+            "label": "Exit dia",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5uq5a2",
+            "label": "Expansion Ratio",
+            "value": "",
+            "unit": ""
+          }
+        ]
+      },
+      {
+        "id": "msjsth5ujrza",
+        "type": "fields",
+        "title": "Igniter Details",
+        "rows": [
+          {
+            "id": "msjsth5u5fag",
+            "label": "Grain length",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5ugm4p",
+            "label": "Inner dia",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5ukj4k",
+            "label": "Outer dia",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5uopf2",
+            "label": "Fraction of Round Grain",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5uyeuk",
+            "label": "Mass",
+            "value": "",
+            "unit": "g"
+          },
+          {
+            "id": "msjsth5us5jk",
+            "label": "Attachment Method",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5uq75z",
+            "label": "Distance to nozzle",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5u3l3d",
+            "label": "Ematch1 Distance from middle of grain",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5uat24",
+            "label": "Ematch1 Attachment Method",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5umepd",
+            "label": "Ematch1 size",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5ulo06",
+            "label": "Ematch2 Distance from middle of grain",
+            "value": "",
+            "unit": "in"
+          },
+          {
+            "id": "msjsth5ug3c9",
+            "label": "Ematch2 Attachment Method",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5ui7fr",
+            "label": "Ematch2 size",
+            "value": "",
+            "unit": ""
+          }
+        ]
+      },
+      {
+        "id": "msjsth5ulw91",
+        "type": "fields",
+        "title": "GCS",
+        "rows": [
+          {
+            "id": "msjsth5uon6f",
+            "label": "GCS 1",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5u6m2t",
+            "label": "GCS 1 Antenna",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5u1sc5",
+            "label": "GCS 2",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5u1gza",
+            "label": "GCS 2 Antenna",
+            "value": "",
+            "unit": ""
+          }
+        ]
+      },
+      {
+        "id": "msjsth5uc6k4",
+        "type": "fields",
+        "title": "Launch Conditions",
+        "rows": [
+          {
+            "id": "msjsth5u1wnz",
+            "label": "Location",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5ua8bg",
+            "label": "Time",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5uzuhy",
+            "label": "Wind",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5ubovs",
+            "label": "Temperature",
+            "value": "",
+            "unit": "DegF"
+          },
+          {
+            "id": "msjsth5uzw42",
+            "label": "Conditions",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsth5uiniv",
+            "label": "Nearest METAR",
+            "value": "",
+            "unit": ""
+          }
+        ]
+      }
+    ]
+  }
+]
