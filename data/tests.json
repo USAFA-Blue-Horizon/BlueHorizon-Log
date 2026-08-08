@@ -377,20 +377,20 @@
         "id": "msjsth5udxma",
         "type": "list",
         "title": "TODO",
-        "items": [
-          {
-            "id": "msjswob8ohqz",
-            "text": "",
-            "done": false
-          }
-        ],
+        "items": [],
         "strike": true
       },
       {
         "id": "msjsth5u34p3",
         "type": "list",
         "title": "Notes",
-        "items": []
+        "items": [
+          {
+            "id": "msjswsmib6fp",
+            "text": "",
+            "done": false
+          }
+        ]
       },
       {
         "id": "msjsth5uhq7c",
