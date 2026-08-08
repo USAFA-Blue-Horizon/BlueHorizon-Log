@@ -382,6 +382,50 @@ mark { background: rgba(77,163,255,0.3); color: inherit; border-radius: 3px; }
 
 img.avatar-sm, img.avatar-big { object-fit: cover; padding: 0; }
 
+/* ---------- v13: view density toggle ---------- */
+.view-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.view-switch { display: inline-flex; background: var(--bg-card); border: 1px solid var(--line); border-radius: 9px; padding: 2px; flex: 0 0 auto; }
+.view-switch button { padding: 4px 11px; border-radius: 7px; color: var(--text-dim); font-size: 16px; line-height: 1; }
+.view-switch button.on { background: var(--accent-soft); color: var(--accent); }
+.feed-list.grid2, .project-list.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.feed-list.grid3, .project-list.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.feed-list.grid3 .card, .feed-list.grid2 .card { align-self: start; }
+.feed-list.grid3 .card-body { -webkit-line-clamp: 2; font-size: 13px; }
+.feed-list.grid3 .card-photos img { height: 64px; width: 84px; }
+@media (max-width: 620px) {
+  .feed-list.grid2, .project-list.grid2, .feed-list.grid3, .project-list.grid3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- v13: calendar ---------- */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-dow { font-family: var(--display); font-size: 10.5px; letter-spacing: 0.08em; color: var(--text-dim); text-align: center; padding: 4px 0; }
+.cal-cell { min-height: 84px; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; overflow: hidden; }
+.cal-cell.empty { background: transparent; border-color: transparent; }
+.cal-cell.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cal-daynum { font-size: 11.5px; color: var(--text-dim); font-weight: 600; }
+.cal-cell.today .cal-daynum { color: var(--accent); }
+.cal-ev { font-size: 10.5px; border-radius: 4px; padding: 2px 5px; margin-top: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev.task { background: var(--accent-soft); color: var(--accent); }
+.cal-ev.task.overdue { background: rgba(255,107,107,0.15); color: var(--danger); }
+.cal-ev.goal { background: rgba(74,222,128,0.14); color: var(--ok); }
+@media (max-width: 620px) { .cal-cell { min-height: 60px; } .cal-ev { font-size: 9px; } }
+
+/* ---------- v13: testing module ---------- */
+.test-section { background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.test-section h3 { font-size: 15px; font-family: var(--display); letter-spacing: .03em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.test-item { display: flex; align-items: flex-start; gap: 9px; padding: 6px 0; border-top: 1px solid var(--line); }
+.test-item:first-of-type { border-top: 0; }
+.oc { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 7px; border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; cursor: pointer; background: var(--bg); color: var(--text-dim); }
+.oc.pass { background: rgba(74,222,128,0.15); color: var(--ok); border-color: rgba(74,222,128,0.4); }
+.oc.partial { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+.oc.fail { background: rgba(255,107,107,0.15); color: var(--danger); border-color: rgba(255,107,107,0.4); }
+.test-item .ti-main { flex: 1; min-width: 0; }
+.test-item .ti-text { font-size: 14px; cursor: text; }
+.test-item .ti-note { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; cursor: text; font-style: italic; }
+.test-item .ti-x { color: var(--danger); font-size: 15px; opacity: .6; }
+.test-item .ti-x:hover { opacity: 1; }
+
+
 /* ---------- v4: PO builder ---------- */
 .poi-card {
   background: var(--bg-card); border: 1px solid var(--line);
