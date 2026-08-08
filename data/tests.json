@@ -19,7 +19,7 @@
           {
             "id": "msjsth5um250",
             "label": "Engine",
-            "value": "revr",
+            "value": "",
             "unit": ""
           },
           {
@@ -31,6 +31,12 @@
           {
             "id": "msjsth5ux9bh",
             "label": "General Test Objective",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "id": "msjsvm4u0mkl",
+            "label": "something",
             "value": "",
             "unit": ""
           }
