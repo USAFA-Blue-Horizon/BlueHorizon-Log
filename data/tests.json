@@ -371,7 +371,13 @@
         "id": "msjsth5unmec",
         "type": "list",
         "title": "Lessons Learned",
-        "items": []
+        "items": [
+          {
+            "id": "msjswlgiycqp",
+            "text": "",
+            "done": false
+          }
+        ]
       },
       {
         "id": "msjsth5udxma",
