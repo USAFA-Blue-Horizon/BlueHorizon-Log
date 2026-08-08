@@ -11,5 +11,18 @@
       "done": false
     }
   ],
-  "tasks": []
+  "tasks": [
+    {
+      "id": "msjqv30zqycd",
+      "status": "open",
+      "created": "2026-08-08T02:18:13.139Z",
+      "createdBy": "Grant Stec",
+      "title": "TEST v13 — verify update cadence (auto-deleted)",
+      "due": "2026-08-08",
+      "updateFreq": "weekly",
+      "assignees": [
+        "grant-stec"
+      ]
+    }
+  ]
 }
