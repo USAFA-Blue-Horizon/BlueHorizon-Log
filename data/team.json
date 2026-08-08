@@ -11,27 +11,5 @@
       "done": false
     }
   ],
-  "tasks": [
-    {
-      "id": "msjqv30zqycd",
-      "status": "open",
-      "created": "2026-08-08T02:18:13.139Z",
-      "createdBy": "Grant Stec",
-      "title": "TEST v13 — verify update cadence (auto-deleted)",
-      "due": "2026-08-08",
-      "updateFreq": "weekly",
-      "assignees": [
-        "grant-stec"
-      ],
-      "updates": [
-        {
-          "by": "Grant Stec",
-          "rid": "grant-stec",
-          "date": "2026-08-08T02:18:14.768Z",
-          "text": "Verification update: cadence + update log working."
-        }
-      ],
-      "lastUpdate": "2026-08-08T02:18:14.768Z"
-    }
-  ]
+  "tasks": []
 }
