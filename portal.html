@@ -73,7 +73,14 @@
 
   <!-- Feed -->
   <section id="view-feed" class="view hidden">
-    <div class="feed-filters" id="feedFilters"></div>
+    <div class="view-toolbar">
+      <div class="feed-filters" id="feedFilters" style="flex:1"></div>
+      <div class="view-switch" id="feedViewSwitch" data-target="feedList">
+        <button data-density="list" title="List">&#8803;</button>
+        <button data-density="grid2" title="Two columns">&#9638;</button>
+        <button data-density="grid3" title="Compact grid">&#8862;</button>
+      </div>
+    </div>
     <div id="feedList" class="feed-list"></div>
     <div id="feedEmpty" class="empty hidden">
       <p class="empty-title">No entries yet</p>
@@ -121,6 +128,14 @@
       ⬆ Import existing PO (.xlsx / .csv) for arrival tracking
     </label>
     <input id="poFileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
+    <div class="view-toolbar">
+      <span style="flex:1"></span>
+      <div class="view-switch" id="poViewSwitch" data-target="poList">
+        <button data-density="list" title="List">&#8803;</button>
+        <button data-density="grid2" title="Two columns">&#9638;</button>
+        <button data-density="grid3" title="Compact grid">&#8862;</button>
+      </div>
+    </div>
     <div id="poList" class="project-list"></div>
     <div id="posEmpty" class="empty hidden"><p class="empty-title">No purchase orders yet</p>
       <p>Build one from product links, or import the Excel you already send to the purchasing office.</p></div>
@@ -169,6 +184,44 @@
     <input id="resourceFileInput" type="file" hidden>
   </section>
 
+  <!-- Calendar -->
+  <section id="view-calendar" class="view hidden">
+    <div class="view-toolbar">
+      <h2 class="page-title" style="flex:1;margin:0">Calendar</h2>
+      <button class="mini-btn" id="calPrev">&lsaquo;</button>
+      <span id="calMonthLabel" style="font-family:var(--display);min-width:150px;text-align:center"></span>
+      <button class="mini-btn" id="calNext">&rsaquo;</button>
+      <button class="mini-btn" id="calExport">Excel</button>
+    </div>
+    <p class="settings-note" style="margin:4px 0 10px">Task deadlines and goal target dates, pulled automatically. Tap an item to open it.</p>
+    <div id="calGrid" class="cal-grid"></div>
+  </section>
+
+  <!-- Testing procedures -->
+  <section id="view-tests" class="view hidden">
+    <h2 class="page-title">Test Procedures</h2>
+    <p class="settings-note" style="margin-bottom:10px">Editable test checklists &mdash; objectives with pass / partial / fail outcomes and notes.</p>
+    <button class="ghost-btn" id="btnNewTest" style="margin-bottom:8px">+ New test checklist</button>
+    <label class="ghost-btn file-btn" for="testImportInput" style="margin-bottom:12px">Import a test sheet (.xlsx)</label>
+    <input id="testImportInput" type="file" accept=".xlsx,.xls" hidden>
+    <div id="testList" class="project-list"></div>
+    <div id="testsEmpty" class="empty hidden"><p class="empty-title">No test checklists yet</p></div>
+  </section>
+
+  <!-- Single test -->
+  <section id="view-test" class="view hidden">
+    <button class="back-btn" data-back="tests">&larr; Test Procedures</button>
+    <h2 id="testTitle" class="page-title" style="cursor:pointer" title="Tap to rename"></h2>
+    <div id="testMeta"></div>
+    <div class="po-progress" style="margin:10px 0"><div id="testProgressBar"></div></div>
+    <div id="testBody"></div>
+    <button class="ghost-btn" id="btnAddTestSection" style="margin-top:10px">+ Add section</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="ghost-btn" id="btnExportTest" style="flex:1">Export Excel</button>
+      <button class="text-btn danger" id="btnDeleteTest">Delete</button>
+    </div>
+  </section>
+
 </main>
 
 <!-- ===== Bottom nav ===== -->
@@ -203,6 +256,8 @@
       <span style="width:52px"></span>
     </div>
     <div class="sheet-body more-menu">
+      <button class="more-item" data-goto="calendar">&#128197; Calendar</button>
+      <button class="more-item" data-goto="tests">&#129514; Test Procedures</button>
       <button class="more-item" data-goto="photos">📷 Photo Gallery</button>
       <button class="more-item" data-goto="projects">📁 Projects</button>
       <button class="more-item" data-goto="meetings">📋 Meeting Notes</button>
@@ -210,7 +265,6 @@
       <button class="more-item" id="moreEngineLab">🔥 Engine Lab (sim &amp; injector design)</button>
       <button class="more-item" data-goto="roster">👥 Team Roster</button>
       <button class="more-item" id="moreOnboard">🚀 New member onboarding</button>
-      <button class="more-item" id="moreJournal">📓 Write weekly journal</button>
       <button class="more-item" id="moreHero">🎬 Update public site hero video</button>
       <button class="more-item" id="moreNewRepo">🗃 New GitHub repo (club org)</button>
       <button class="more-item" id="moreVendorCreds">🔐 Import vendor logins (CSV)</button>
@@ -227,7 +281,6 @@
       <button class="text-btn" id="composeCancel">Cancel</button>
       <div class="seg" id="entryTypeSeg">
         <button class="seg-btn active" data-type="log">Log</button>
-        <button class="seg-btn" data-type="journal">Journal</button>
         <button class="seg-btn" data-type="meeting">Meeting</button>
       </div>
       <button class="text-btn primary" id="composePost">Post</button>
@@ -299,6 +352,21 @@
       <input id="taskDue" class="input" type="date">
       <label class="field-label">Assign to</label>
       <div id="taskAssignees" class="assignee-grid"></div>
+
+      <label class="field-label">Progress updates <span class="hint">nudge the assignee to write a short update</span></label>
+      <div class="seg" id="taskFreqSeg" style="align-self:flex-start">
+        <button class="seg-btn active" data-freq="none">None</button>
+        <button class="seg-btn" data-freq="daily">Daily</button>
+        <button class="seg-btn" data-freq="weekly">Weekly</button>
+        <button class="seg-btn" data-freq="monthly">Monthly</button>
+      </div>
+
+      <div id="taskUpdatesWrap" class="hidden">
+        <label class="field-label">Update log</label>
+        <div id="taskUpdatesList" class="feed-list"></div>
+        <textarea id="taskUpdateText" class="input textarea" rows="3" placeholder="Write a short update on this task (a paragraph is plenty)..."></textarea>
+        <button class="mini-btn" id="taskUpdatePost" style="align-self:flex-start">Post update</button>
+      </div>
       <button class="text-btn danger hidden" id="taskDelete" style="align-self:flex-start">Delete task</button>
     </div>
   </div>
