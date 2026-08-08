@@ -110,6 +110,40 @@ def main():
         )
         messages.append((email, "BlueHorizon: task deadlines", body))
 
+    # ---- recurring task-update nudges (daily / weekly / monthly) ----
+    cadence_days = {"daily": 1, "weekly": 7, "monthly": 30}
+    upd_per_person = {}
+    now = datetime.utcnow()
+    for t in team.get("tasks", []):
+        if t.get("status") == "done":
+            continue
+        freq = t.get("updateFreq")
+        if freq not in cadence_days:
+            continue
+        last = t.get("lastUpdate") or t.get("created")
+        try:
+            last_dt = datetime.fromisoformat(str(last).replace("Z", "")) if last else None
+        except ValueError:
+            last_dt = None
+        if last_dt is not None and (now - last_dt).days < cadence_days[freq]:
+            continue
+        line = f"  * ({freq} update) {t['title']}"
+        for rid in t.get("assignees", []):
+            upd_per_person.setdefault(rid, []).append(line)
+
+    for rid, lines in upd_per_person.items():
+        email = emails.get(rid) or emails.get(roster.get(rid, "").strip().lower())
+        if not email:
+            continue
+        name = roster.get(rid, rid).split(" ")[0]
+        body = (
+            f"Hey {name},\n\nThese tasks are due for a progress update - please open the app and "
+            f"write a short paragraph on where things stand:\n\n"
+            + "\n".join(lines)
+            + f"\n\nPost your update here (open the task, then 'Post update'): {app_url}\n\n- BlueHorizon Log (automated)"
+        )
+        messages.append((email, "BlueHorizon: task progress update requested", body))
+
     # ---- Friday journal nudge ----
     if today.weekday() == 4:  # Friday
         for rid, email in emails.items():
