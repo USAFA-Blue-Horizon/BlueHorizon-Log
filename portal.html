@@ -147,6 +147,14 @@
     <h2 id="pobTitle" class="page-title" style="cursor:pointer" title="Tap to rename"></h2>
     <div id="pobMeta" class="detail-meta" style="margin-bottom:12px"></div>
     <button class="ghost-btn" id="btnAddPoItem" style="margin-bottom:12px">+ Add item (paste a product link)</button>
+    <div class="view-toolbar">
+      <span style="flex:1;font-size:13px;color:var(--text-dim)">Items</span>
+      <div class="view-switch" data-target="pobItems">
+        <button data-density="list" title="List">&#8803;</button>
+        <button data-density="grid2" title="Two columns">&#9638;</button>
+        <button data-density="grid3" title="Compact grid">&#8862;</button>
+      </div>
+    </div>
     <div id="pobItems"></div>
     <div class="home-section" style="margin-top:18px">
       <div class="home-head"><h3>Vendors — shipping &amp; 889 compliance</h3></div>
@@ -215,7 +223,7 @@
     <div id="testMeta"></div>
     <div class="po-progress" style="margin:10px 0"><div id="testProgressBar"></div></div>
     <div id="testBody"></div>
-    <button class="ghost-btn" id="btnAddTestSection" style="margin-top:10px">+ Add section</button>
+    <button class="ghost-btn" id="btnAddTestSection" style="margin-top:10px">+ Add section / block</button>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="ghost-btn" id="btnExportTest" style="flex:1">Export Excel</button>
       <button class="text-btn danger" id="btnDeleteTest">Delete</button>
