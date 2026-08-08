@@ -58,7 +58,7 @@
           {
             "id": "msjsth5utbvp",
             "text": "(1.2) Successful engine ignition",
-            "outcome": "",
+            "outcome": "fail",
             "note": "",
             "header": false
           },
