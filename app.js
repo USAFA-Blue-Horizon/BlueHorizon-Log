@@ -1007,6 +1007,7 @@ function renderPob() {
   });
 
   renderPobTotals(po);
+  applyDensity('pobItems');
 }
 
 function pruneVendors(po) {
@@ -2212,101 +2213,241 @@ async function testConnection() {
 /* ----- navigation & helpers ----- */
 
 
-/* ===================== Testing procedures module ===================== */
+/* ============ Testing procedures module (v14: full sheet) ============ */
 const OUTCOMES = ['', 'pass', 'partial', 'fail'];
 const OUTCOME_GLYPH = { '': '\u00b7', pass: '+', partial: '~', fail: '\u2013' };
-function saveTests(message) { return api.updateJson('data/tests.json', () => state.tests, message); }
-function currentTest() { return state.tests.find((x) => x.id === state.openTest); }
+function saveTests(message) { return api.updateJson('data/tests.json', function () { return state.tests; }, message); }
+function currentTest() { return state.tests.find(function (x) { return x.id === state.openTest; }); }
+let _testSaveTimer = null;
+function persistTests() { clearTimeout(_testSaveTimer); _testSaveTimer = setTimeout(function () { saveTests('test: edit').catch(function (e) { toast(e.message, true); }); }, 900); }
+function fRow(label, unit) { return { id: uid(), label: label, value: '', unit: unit || '' }; }
+function cItem(text, header) { return { id: uid(), text: text, outcome: '', note: '', header: !!header }; }
 
+function defaultTestBlocks() {
+  return [
+    { id: uid(), type: 'fields', title: 'Overview', rows: [fRow('Date'), fRow('Engine'), fRow('Test Fire Number'), fRow('General Test Objective')] },
+    { id: uid(), type: 'checklist', title: 'Specific Test Objectives', items: [
+      cItem('(1) Burn Profile', true),
+      cItem('(1.1) Successful ematch ignition'),
+      cItem('(1.2) Successful engine ignition'),
+      cItem('(1.3) O:F ratio of 3.5'),
+      cItem('(1.4) Reached target thrust level'),
+      cItem('(1.5) Maintain thrust within tolerance'),
+      cItem('(1.6) Variance/Noise within limit'),
+      cItem('(1.7) No degradation of chamber'),
+      cItem('(1.8) Ablative liner thickness remaining'),
+      cItem('(1.9) No degradation of nozzle'),
+      cItem('(1.10) Uniform/symmetric burn'),
+      cItem('(1.11) No degradation of injector'),
+      cItem('(2) Test Stand', true),
+      cItem('(2.1) Complete setup within time'),
+      cItem('(2.2) No leaks from hoses/tubes'),
+      cItem('(2.3) No extraneous nitrous loss'),
+      cItem('(2.4) No lift from ratchet straps and stakes'),
+      cItem('(2.5) No damage to thrust deflector'),
+      cItem('(2.6) No damage to engine mount'),
+      cItem('(2.7) No damage to cameras'),
+      cItem('(2.8) No damage to tank'),
+      cItem('(3) Ground Support', true),
+      cItem('(3.1) Capture video from tripod camera'),
+      cItem('(3.2) Capture video from test stand camera'),
+      cItem('(3.3) Capture thermal image of engine burn'),
+      cItem('(3.4) Ground Station: maintain data stream'),
+      cItem('(3.5) Ground Station: no repeated commands'),
+      cItem('(3.6) No damage to wiring'),
+      cItem('(3.7) Successfully record all PT / load data') ] },
+    { id: uid(), type: 'outcome', title: 'Test Outcome', value: '' },
+    { id: uid(), type: 'fields', title: 'Results', rows: [
+      fRow('Max Thrust', 'lbf'), fRow('Avg Thrust', 'lbf'), fRow('Min Thrust', 'lbf'), fRow('Thrust Variance', 'lbf'),
+      fRow('Max Chamber Pressure', 'psi'), fRow('Avg Chamber Pressure', 'psi'), fRow('Min Chamber Pressure', 'psi'), fRow('Chamber Pressure Variance', 'psi'),
+      fRow('Burn Time', 's'), fRow('Max Temp Outside Wall', 'DegF'),
+      fRow('Max OX pressure', 'psi'), fRow('Avg OX pressure', 'psi'), fRow('Min OX Pressure', 'psi'),
+      fRow('Max Fuel Pressure', 'psi'), fRow('Avg Fuel pressure', 'psi'), fRow('Min Fuel Pressure', 'psi'), fRow('Expansion', '')] },
+    { id: uid(), type: 'text', title: 'Test Summary', text: '' },
+    { id: uid(), type: 'list', title: 'Lessons Learned', items: [] },
+    { id: uid(), type: 'list', title: 'TODO', items: [], strike: true },
+    { id: uid(), type: 'list', title: 'Notes', items: [] },
+    { id: uid(), type: 'fields', title: 'Engine Details', rows: [
+      fRow('Injector Type'), fRow('Fuel Anulus ID', 'in'), fRow('Fuel Anulus OD', 'in'), fRow('OX holes dia', 'in'), fRow('# OX holes'),
+      fRow('Chamber Length', 'in'), fRow('Chamber dia w/o Ablative Liner', 'in'), fRow('Chamber L*'), fRow('Ablative Liner Thickness', 'in'),
+      fRow('Nozzle Half Angle', 'deg'), fRow('Throat dia', 'in'), fRow('Exit dia', 'in'), fRow('Expansion Ratio')] },
+    { id: uid(), type: 'fields', title: 'Igniter Details', rows: [
+      fRow('Grain length', 'in'), fRow('Inner dia', 'in'), fRow('Outer dia', 'in'), fRow('Fraction of Round Grain'), fRow('Mass', 'g'),
+      fRow('Attachment Method'), fRow('Distance to nozzle', 'in'),
+      fRow('Ematch1 Distance from middle of grain', 'in'), fRow('Ematch1 Attachment Method'), fRow('Ematch1 size'),
+      fRow('Ematch2 Distance from middle of grain', 'in'), fRow('Ematch2 Attachment Method'), fRow('Ematch2 size')] },
+    { id: uid(), type: 'fields', title: 'GCS', rows: [fRow('GCS 1'), fRow('GCS 1 Antenna'), fRow('GCS 2'), fRow('GCS 2 Antenna')] },
+    { id: uid(), type: 'fields', title: 'Launch Conditions', rows: [
+      fRow('Location'), fRow('Time'), fRow('Wind'), fRow('Temperature', 'DegF'), fRow('Conditions'), fRow('Nearest METAR')] }
+  ];
+}
 function renderTests() {
   const list = $('testList'); if (!list) return;
   list.innerHTML = '';
   $('testsEmpty').classList.toggle('hidden', state.tests.length > 0);
-  state.tests.forEach((t) => {
-    const items = (t.sections || []).flatMap((s) => s.items || []);
-    const pass = items.filter((i) => i.outcome === 'pass').length;
+  state.tests.forEach(function (t) {
+    const items = testChecks(t);
+    const pass = items.filter(function (i) { return i.outcome === 'pass'; }).length;
+    const oc = (t.blocks || []).find(function (b) { return b.type === 'outcome'; });
     const div = document.createElement('div');
     div.className = 'project-card';
     div.innerHTML = '<div><div class="project-name">' + esc(t.name) + '</div><div class="project-count">' +
-      esc(t.engine || '') + (t.date ? ' \u00b7 ' + t.date : '') + ' \u00b7 ' + esc(t.by || '') + '</div></div>' +
+      esc(fieldVal(t, 'Engine') || '') + ' ' + esc(fieldVal(t, 'Date') || '') + ' \u00b7 ' + esc(t.by || '') +
+      (oc && oc.value ? ' \u00b7 ' + esc(oc.value) : '') + '</div></div>' +
       '<span class="project-count">' + pass + '/' + items.length + ' passed \u203a</span>';
-    div.onclick = () => { state.openTest = t.id; switchView('test'); renderTest(); };
+    div.onclick = function () { state.openTest = t.id; switchView('test'); renderTest(); };
     list.appendChild(div);
   });
+}
+function testChecks(t) {
+  return (t.blocks || []).filter(function (b) { return b.type === 'checklist'; })
+    .reduce(function (a, b) { return a.concat((b.items || []).filter(function (i) { return !i.header; })); }, []);
+}
+function fieldVal(t, label) {
+  let v = '';
+  (t.blocks || []).forEach(function (b) {
+    if (b.type !== 'fields') return;
+    (b.rows || []).forEach(function (r) { if (r.label === label && r.value) v = r.value; });
+  });
+  return v;
 }
 
 async function newTest() {
   if (!requireToken()) return;
-  const name = prompt('Name this test checklist (e.g. "Pintle 4 - 4-10-26"):');
+  const name = prompt('Test name (e.g. "Pintle 4 - 4-10-26"):');
   if (!name || !name.trim()) return;
-  const engine = prompt('Engine / variant (optional):', '') || '';
-  const t = { id: uid(), name: name.trim(), engine: engine.trim(), date: today(), by: cfg.name || 'Unknown',
-    created: new Date().toISOString(), sections: [{ id: uid(), title: 'Objectives', items: [] }] };
+  const t = { id: uid(), name: name.trim(), by: cfg.name || 'Unknown', created: new Date().toISOString(), blocks: defaultTestBlocks() };
+  const d = t.blocks[0].rows.find(function (r) { return r.label === 'Date'; }); if (d) d.value = today();
   state.tests.unshift(t); state.openTest = t.id;
-  switchView('test'); renderTest();
-  try { await saveTests('test: new ' + t.name); } catch (e) { toast(e.message, true); }
+  switchView('test'); renderTest(); renderTests();
+  try { await saveTests('test: new ' + t.name); toast('Test sheet created \u2713'); } catch (e) { toast(e.message, true); }
 }
 
 function renderTest() {
   const t = currentTest(); if (!t) { switchView('tests'); return; }
+  if (!t.blocks) { t.blocks = defaultTestBlocks(); }
   $('testTitle').textContent = t.name;
-  $('testMeta').innerHTML = '<div class="detail-meta">' + esc(t.engine || '') + (t.date ? ' \u00b7 ' + t.date : '') + ' \u00b7 by ' + esc(t.by || '?') + '</div>';
-  const items = (t.sections || []).flatMap((s) => s.items || []);
-  const pass = items.filter((i) => i.outcome === 'pass').length;
-  $('testProgressBar').style.width = items.length ? ((pass / items.length) * 100) + '%' : '0';
+  $('testMeta').innerHTML = '<div class="detail-meta">by ' + esc(t.by || '?') + ' \u00b7 created ' + new Date(t.created).toLocaleDateString() + '</div>';
+  const items = testChecks(t);
+  const pass = items.filter(function (i) { return i.outcome === 'pass'; }).length;
+  $('testProgressBar').style.width = items.length ? (pass / items.length * 100) + '%' : '0';
   const body = $('testBody'); body.innerHTML = '';
-  (t.sections || []).forEach((sec) => {
-    const box = document.createElement('div'); box.className = 'test-section';
-    const h = document.createElement('h3');
-    h.innerHTML = '<span class="sec-title" style="flex:1;cursor:text">' + esc(sec.title) +
-      '</span><button class="mini-btn add">+ item</button> <button class="text-btn danger delsec">\u2715</button>';
-    h.querySelector('.sec-title').onclick = () => editSecTitle(sec);
-    h.querySelector('.add').onclick = () => addTestItem(sec);
-    h.querySelector('.delsec').onclick = () => delTestSection(sec);
-    box.appendChild(h);
-    (sec.items || []).forEach((it) => box.appendChild(testItemRow(sec, it)));
-    body.appendChild(box);
-  });
+  (t.blocks || []).forEach(function (b) { body.appendChild(renderTestBlock(t, b)); });
 }
 
-function testItemRow(sec, it) {
-  const row = document.createElement('div'); row.className = 'test-item';
-  const oc = it.outcome || '';
-  row.innerHTML = '<div class="oc ' + oc + '">' + OUTCOME_GLYPH[oc] + '</div><div class="ti-main">' +
-    '<div class="ti-text">' + esc(it.text || '(tap to edit)') + '</div>' +
-    '<div class="ti-note">' + (it.note ? esc(it.note) : '+ note') + '</div></div><button class="ti-x">\u2715</button>';
-  row.querySelector('.oc').onclick = () => cycleOutcome(it);
-  row.querySelector('.ti-text').onclick = () => editItemText(it);
-  row.querySelector('.ti-note').onclick = () => editItemNote(it);
-  row.querySelector('.ti-x').onclick = () => { sec.items = sec.items.filter((x) => x !== it); renderTest(); persistTests(); };
-  return row;
+function tInput(val, ph, cls, onch) {
+  const i = document.createElement('input');
+  i.className = cls || 'tf-val'; i.value = val || ''; i.placeholder = ph || '';
+  i.onchange = function () { onch(i.value); persistTests(); };
+  return i;
+}
+function xBtn(fn) { const b = document.createElement('button'); b.className = 'tf-x'; b.textContent = '\u2715'; b.onclick = fn; return b; }
+
+function renderTestBlock(t, b) {
+  const box = document.createElement('div'); box.className = 'test-section';
+  const h = document.createElement('h3');
+  const ttl = document.createElement('span'); ttl.style.cssText = 'flex:1;cursor:text'; ttl.textContent = b.title;
+  ttl.onclick = function () { const v = prompt('Section title:', b.title); if (v === null) return; b.title = v.trim() || b.title; renderTest(); persistTests(); };
+  h.appendChild(ttl);
+  if (b.type !== 'text' && b.type !== 'outcome') {
+    const add = document.createElement('button'); add.className = 'mini-btn'; add.textContent = '+ row';
+    add.onclick = function () { addBlockRow(b); }; h.appendChild(add);
+  }
+  const del = document.createElement('button'); del.className = 'text-btn danger'; del.textContent = '\u2715';
+  del.onclick = function () { if (!confirm('Delete section "' + b.title + '"?')) return; t.blocks = t.blocks.filter(function (x) { return x !== b; }); renderTest(); persistTests(); };
+  h.appendChild(del);
+  box.appendChild(h);
+
+  if (b.type === 'fields') {
+    (b.rows || []).forEach(function (r) {
+      const row = document.createElement('div'); row.className = 'tf-row';
+      const lab = document.createElement('div'); lab.className = 'tf-label'; lab.textContent = r.label;
+      lab.onclick = function () { const v = prompt('Field name:', r.label); if (v === null) return; r.label = v.trim() || r.label; renderTest(); persistTests(); };
+      row.appendChild(lab);
+      row.appendChild(tInput(r.value, '', 'tf-val', function (v) { r.value = v; }));
+      const u = document.createElement('span'); u.className = 'tf-unit'; u.textContent = r.unit || ''; row.appendChild(u);
+      row.appendChild(xBtn(function () { b.rows = b.rows.filter(function (x) { return x !== r; }); renderTest(); persistTests(); }));
+      box.appendChild(row);
+    });
+  } else if (b.type === 'checklist') {
+    (b.items || []).forEach(function (it) {
+      const row = document.createElement('div'); row.className = 'test-item' + (it.header ? ' header' : '');
+      const oc = document.createElement('div'); oc.className = 'oc ' + (it.outcome || ''); oc.textContent = OUTCOME_GLYPH[it.outcome || ''];
+      oc.onclick = function () { it.outcome = OUTCOMES[(OUTCOMES.indexOf(it.outcome || '') + 1) % OUTCOMES.length]; renderTest(); persistTests(); };
+      row.appendChild(oc);
+      const main = document.createElement('div'); main.className = 'ti-main';
+      main.appendChild(tInput(it.text, 'Objective', 'tf-val', function (v) { it.text = v; }));
+      row.appendChild(main);
+      row.appendChild(tInput(it.note, 'note', 'ti-note-inp', function (v) { it.note = v; }));
+      row.appendChild(xBtn(function () { b.items = b.items.filter(function (x) { return x !== it; }); renderTest(); persistTests(); }));
+      box.appendChild(row);
+    });
+  } else if (b.type === 'outcome') {
+    const sel = document.createElement('select'); sel.className = 't-outcome ' + (b.value || '');
+    ['', 'SUCCESS', 'PARTIAL', 'FAILURE'].forEach(function (o) {
+      const op = document.createElement('option'); op.value = o; op.textContent = o || '(not set)';
+      if (b.value === o) op.selected = true; sel.appendChild(op);
+    });
+    sel.onchange = function () { b.value = sel.value; renderTest(); renderTests(); persistTests(); };
+    box.appendChild(sel);
+  } else if (b.type === 'text') {
+    const ta = document.createElement('textarea'); ta.className = 'input textarea'; ta.rows = 3; ta.value = b.text || '';
+    ta.placeholder = 'Type here...';
+    ta.onchange = function () { b.text = ta.value; persistTests(); };
+    box.appendChild(ta);
+  } else if (b.type === 'list') {
+    (b.items || []).forEach(function (it, idx) {
+      const row = document.createElement('div'); row.className = 'tl-row' + (it.done ? ' done' : '');
+      const n = document.createElement('span'); n.className = 'tf-unit'; n.textContent = '(' + (idx + 1) + ')'; row.appendChild(n);
+      if (b.strike) {
+        const ck = document.createElement('div'); ck.className = 'check' + (it.done ? ' on' : ''); ck.textContent = '\u2713';
+        ck.onclick = function () { it.done = !it.done; renderTest(); persistTests(); }; row.appendChild(ck);
+      }
+      row.appendChild(tInput(it.text, 'Add an entry', 'tf-val', function (v) { it.text = v; }));
+      row.appendChild(xBtn(function () { b.items = b.items.filter(function (x) { return x !== it; }); renderTest(); persistTests(); }));
+      box.appendChild(row);
+    });
+  }
+  return box;
 }
 
-let _testSaveTimer = null;
-function persistTests() { clearTimeout(_testSaveTimer); _testSaveTimer = setTimeout(() => { saveTests('test: edit').catch((e) => toast(e.message, true)); }, 800); }
-function cycleOutcome(it) { if (!requireToken()) return; it.outcome = OUTCOMES[(OUTCOMES.indexOf(it.outcome || '') + 1) % OUTCOMES.length]; renderTest(); persistTests(); }
-function editItemText(it) { if (!requireToken()) return; const v = prompt('Objective:', it.text || ''); if (v === null) return; it.text = v.trim(); renderTest(); persistTests(); }
-function editItemNote(it) { if (!requireToken()) return; const v = prompt('Note (blank to clear):', it.note || ''); if (v === null) return; it.note = v.trim() || undefined; renderTest(); persistTests(); }
-function editSecTitle(sec) { if (!requireToken()) return; const v = prompt('Section title:', sec.title || ''); if (v === null) return; sec.title = v.trim() || 'Section'; renderTest(); persistTests(); }
-function addTestItem(sec) { if (!requireToken()) return; const v = prompt('New objective:'); if (v === null || !v.trim()) return; sec.items = sec.items || []; sec.items.push({ id: uid(), text: v.trim(), outcome: '' }); renderTest(); persistTests(); }
-function addTestSection() { const t = currentTest(); if (!t || !requireToken()) return; const v = prompt('Section title:', 'Section'); if (v === null) return; t.sections = t.sections || []; t.sections.push({ id: uid(), title: v.trim() || 'Section', items: [] }); renderTest(); persistTests(); }
-function delTestSection(sec) { const t = currentTest(); if (!t) return; if (!confirm('Delete section "' + sec.title + '" and its items?')) return; t.sections = t.sections.filter((s) => s !== sec); renderTest(); persistTests(); }
+function addBlockRow(b) {
+  if (!requireToken()) return;
+  if (b.type === 'fields') { const l = prompt('Field name:'); if (!l) return; b.rows = b.rows || []; b.rows.push({ id: uid(), label: l.trim(), value: '', unit: (prompt('Unit (optional):', '') || '').trim() }); }
+  else if (b.type === 'checklist') { const v = prompt('Objective (prefix with (n) for a heading):'); if (!v) return; const hdr = /^\(\d+\)\s/.test(v.trim()); b.items = b.items || []; b.items.push(cItem(v.trim(), hdr)); }
+  else if (b.type === 'list') { b.items = b.items || []; b.items.push({ id: uid(), text: '', done: false }); }
+  renderTest(); persistTests();
+}
+
+function addTestSection() {
+  const t = currentTest(); if (!t || !requireToken()) return;
+  const kind = (prompt('Block type - fields / checklist / text / list:', 'fields') || '').trim().toLowerCase();
+  if (!['fields', 'checklist', 'text', 'list'].includes(kind)) { if (kind) toast('Unknown type', true); return; }
+  const title = prompt('Section title:', 'New Section'); if (title === null) return;
+  const b = { id: uid(), type: kind, title: title.trim() || 'New Section' };
+  if (kind === 'fields') b.rows = []; else if (kind === 'text') b.text = ''; else b.items = [];
+  t.blocks.push(b); renderTest(); persistTests();
+}
 async function renameTest() { const t = currentTest(); if (!t || !requireToken()) return; const v = prompt('Rename test:', t.name); if (!v || !v.trim()) return; t.name = v.trim(); renderTest(); renderTests(); try { await saveTests('test: rename'); } catch (e) { toast(e.message, true); } }
-async function deleteTest() { const t = currentTest(); if (!t || !requireToken()) return; if (!confirm('Delete "' + t.name + '"?')) return; state.tests = state.tests.filter((x) => x.id !== t.id); switchView('tests'); renderTests(); try { await saveTests('test: delete'); } catch (e) { toast(e.message, true); } }
-
+async function deleteTest() { const t = currentTest(); if (!t || !requireToken()) return; if (!confirm('Delete "' + t.name + '"?')) return; state.tests = state.tests.filter(function (x) { return x.id !== t.id; }); switchView('tests'); renderTests(); try { await saveTests('test: delete'); } catch (e) { toast(e.message, true); } }
 async function exportTestXlsx() {
   const t = currentTest(); if (!t) return;
   try {
     const XLSX = await loadXLSX();
-    const rows = [[t.name], ['Engine', t.engine || ''], ['Date', t.date || ''], [], ['Objective', 'Outcome', 'Note']];
-    (t.sections || []).forEach((sec) => {
-      rows.push([sec.title, '', '']);
-      (sec.items || []).forEach((i) => rows.push(['  ' + (i.text || ''), { '': '', pass: '+', partial: '~', fail: '-' }[i.outcome || ''], i.note || '']));
+    const rows = [[t.name]];
+    const G = { '': '', pass: '+', partial: '~', fail: '-' };
+    (t.blocks || []).forEach(function (b) {
+      rows.push([]); rows.push([b.title]);
+      if (b.type === 'fields') (b.rows || []).forEach(function (r) { rows.push([r.label, r.value, r.unit || '']); });
+      else if (b.type === 'checklist') (b.items || []).forEach(function (i) { rows.push([i.text, G[i.outcome || ''], i.note || '']); });
+      else if (b.type === 'outcome') rows.push([b.value || '']);
+      else if (b.type === 'text') rows.push([b.text || '']);
+      else if (b.type === 'list') (b.items || []).forEach(function (i, n) { rows.push(['(' + (n + 1) + ') ' + (i.text || ''), i.done ? 'done' : '']); });
     });
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 60 }, { wch: 9 }, { wch: 40 }];
+    ws['!cols'] = [{ wch: 58 }, { wch: 22 }, { wch: 30 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t.name.slice(0, 30).replace(/[\\/?*[\]:]/g, ' '));
+    XLSX.utils.book_append_sheet(wb, ws, t.name.slice(0, 28).replace(/[\\/?*[\]:]/g, ' '));
     XLSX.writeFile(wb, t.name.replace(/[^\w.-]+/g, '_') + '.xlsx');
     toast('Test exported \u2713');
   } catch (e) { toast(e.message, true); }
@@ -2321,29 +2462,37 @@ async function importTestXlsx(file) {
     for (const sheetName of wb.SheetNames) {
       if (/^summary$/i.test(sheetName)) continue;
       const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
-      const test = { id: uid(), name: sheetName, engine: '', date: '', by: cfg.name || 'Import', created: new Date().toISOString(), sections: [] };
+      const t = { id: uid(), name: sheetName, by: cfg.name || 'Import', created: new Date().toISOString(), blocks: defaultTestBlocks() };
+      const ov = t.blocks[0], chk = t.blocks[1], oc = t.blocks[2], res = t.blocks[3];
+      chk.items = [];
       let cur = null;
-      for (const row of grid) {
-        const cells = row.map((c) => String(c == null ? '' : c).trim());
-        for (let i = 1; i < cells.length; i++) if (/^engine$/i.test(cells[i - 1]) && cells[i]) test.engine = cells[i];
-        const dM = cells.find((c) => /^\d{4}-\d{2}-\d{2}/.test(c));
-        if (dM && !test.date) test.date = dM.slice(0, 10);
-        const obj = cells.find((c) => /^\(\d+(\.\d+)?\)/.test(c));
-        if (!obj) continue;
-        const outcome = cells.includes('+') ? 'pass' : cells.includes('~') ? 'partial' : cells.includes('-') ? 'fail' : '';
-        const isSection = /^\(\d+\)/.test(obj) && !/^\(\d+\./.test(obj);
-        if (isSection) { cur = { id: uid(), title: obj, items: [] }; test.sections.push(cur); }
-        else {
-          if (!cur) { cur = { id: uid(), title: 'Objectives', items: [] }; test.sections.push(cur); }
-          cur.items.push({ id: uid(), text: obj, outcome });
+      const setField = function (blk, label, val) { const r = blk.rows.find(function (x) { return x.label === label; }); if (r && val) r.value = String(val); };
+      grid.forEach(function (row) {
+        const c = row.map(function (x) { return String(x == null ? '' : x).trim(); });
+        for (let i = 1; i < c.length; i++) {
+          const key = c[i - 1], val = c[i];
+          if (!val) continue;
+          if (/^date$/i.test(key)) setField(ov, 'Date', val.slice(0, 10));
+          if (/^engine$/i.test(key)) setField(ov, 'Engine', val);
+          if (/^test fire number$/i.test(key)) setField(ov, 'Test Fire Number', val);
+          if (/^general test objective$/i.test(key)) setField(ov, 'General Test Objective', val);
+          res.rows.forEach(function (r) { if (r.label.toLowerCase() === key.toLowerCase()) r.value = val; });
         }
-      }
-      if (test.sections.some((s) => s.items.length)) { state.tests.unshift(test); imported++; }
+        if (c.some(function (x) { return /^(SUCCESS|FAILURE|PARTIAL)$/i.test(x); })) {
+          const f = c.find(function (x) { return /^(SUCCESS|FAILURE|PARTIAL)$/i.test(x); }); oc.value = f.toUpperCase();
+        }
+        const obj = c.find(function (x) { return /^\(\d+(\.\d+)?\)/.test(x); });
+        if (!obj) return;
+        const outcome = c.includes('+') ? 'pass' : c.includes('~') ? 'partial' : c.includes('-') ? 'fail' : '';
+        const isHdr = /^\(\d+\)/.test(obj) && !/^\(\d+\./.test(obj);
+        chk.items.push({ id: uid(), text: obj, outcome: outcome, note: '', header: isHdr });
+      });
+      if (chk.items.length) { state.tests.unshift(t); imported++; }
     }
     if (!imported) { toast('No recognizable test sheets found', true); return; }
     renderTests();
     await saveTests('test: import ' + imported + ' sheet(s)');
-    toast('Imported ' + imported + ' test checklist(s) \u2713');
+    toast('Imported ' + imported + ' test sheet(s) \u2713');
   } catch (e) { toast(e.message, true); }
 }
 
