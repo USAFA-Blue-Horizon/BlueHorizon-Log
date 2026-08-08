@@ -52,7 +52,7 @@
             "id": "msjsth5u3lib",
             "text": "(1.1) Successful ematch ignition",
             "outcome": "pass",
-            "note": "things went very bad",
+            "note": "",
             "header": false
           },
           {
@@ -79,7 +79,7 @@
           {
             "id": "msjsth5ubdqn",
             "text": "(1.5) Maintain thrust within tolerance",
-            "outcome": "",
+            "outcome": "pass",
             "note": "",
             "header": false
           },
