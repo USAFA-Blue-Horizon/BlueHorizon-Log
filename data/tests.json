@@ -371,19 +371,19 @@
         "id": "msjsth5unmec",
         "type": "list",
         "title": "Lessons Learned",
-        "items": [
-          {
-            "id": "msjswlgiycqp",
-            "text": "",
-            "done": false
-          }
-        ]
+        "items": []
       },
       {
         "id": "msjsth5udxma",
         "type": "list",
         "title": "TODO",
-        "items": [],
+        "items": [
+          {
+            "id": "msjswob8ohqz",
+            "text": "",
+            "done": false
+          }
+        ],
         "strike": true
       },
       {
